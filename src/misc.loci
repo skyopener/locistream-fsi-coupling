@@ -1,0 +1,19 @@
+// This file is from CHEM. Only need the rule to get qvi.
+
+#include <Loci.h>
+#include "qvi.h"
+#include "eos.h"
+$include "chem.lh"
+                                                                                
+namespace streamUns {
+                                                                                
+  $rule singleton(qvi<-eos) {
+    int nts = 0 ;
+    int nte = 0 ;
+    int nsgk = 0 ;
+                                                                                
+    $qvi=conservativeVectorInfo($eos.numSpecies(),0,$eos.speciesNames(),
+                                nts,nte,nsgk) ;
+  }
+
+}

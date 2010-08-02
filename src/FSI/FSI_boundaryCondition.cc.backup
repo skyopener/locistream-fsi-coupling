@@ -1,0 +1,698 @@
+//-----------------------------------------------------------------------------
+// Description: This file contains some modifications to boundary conditions
+//   due to grid movement.
+//-----------------------------------------------------------------------------
+                                                                                
+// Standard library includes.
+#include <vector>
+using std::vector ;
+                                                                                
+// Loci includes.
+#include <Loci.h>
+using Loci::Area ;
+
+// StreamUns includes.
+#include "const.h"
+#include "gridReader/readGrid.h"
+#include "FSI_move.h"
+#include "residual.h"
+#include "sciTypes.h"
+#include "varsFileInputs.h"
+                                                                                
+namespace streamUns {
+
+//-----------------------------------------------------------------------------
+// Boundary condition check rule for the new "general" boundary condition type.
+
+	
+  // Checks CSD  boundaries.
+  class CheckNoslipCSD : public BC_Check {
+    public:
+      string BoundaryConditions() { return "noslip" ; }
+      string VariablesChecked(fact_db &facts) { return "top,bottom,s" ; }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(ostream &s) { return s ; }
+  } ;
+
+  register_BC<CheckNoslipCSD>
+    registerCheckNoslipCSD ;
+
+  // Checks fixed-pressure outlet boundaries.
+  class CheckFixedPressureOutletGridMotion : public BC_Check {
+    public:
+      string BoundaryConditions() { return "fixedPressureOutlet" ; }
+      string VariablesChecked(fact_db &facts) { return "s" ; }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(ostream &s) { return s ; }
+  } ;
+
+  register_BC<CheckFixedPressureOutletGridMotion>
+    registerCheckFixedPressureOutletGridMotion ;
+
+  // Checks general boundaries.
+  class CheckGeneral : public BC_Check {
+    private:
+      string errorMessage ;
+    public:
+      CheckGeneral() : errorMessage("") {}
+    public:
+      string BoundaryConditions() { return "general" ; }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(std::ostream &s) {
+        s << errorMessage << endl ; return s;
+      }
+      string VariablesChecked(fact_db &facts) {
+        string s="s" ; return s ;
+      }
+  } ;
+                                                                                
+  register_BC<CheckGeneral> registerCheckGeneral ;
+
+  // Checks incompressible inlet boundaries.
+  class CheckIncompressibleInletGridMotion : public BC_Check {
+    public:
+      string BoundaryConditions() { return "incompressibleInlet" ; }
+      string VariablesChecked(fact_db &facts) { return "s" ; }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(ostream &s) { return s ; }
+  } ;
+
+  register_BC<CheckIncompressibleInletGridMotion>
+    registerCheckIncompressibleInletGridMotion ;
+/*
+  // Checks noslip boundaries.
+  class CheckNoslipGridMotion : public BC_Check {
+    public:
+      string BoundaryConditions() { return "noslip" ; }
+      string VariablesChecked(fact_db &facts) { return "s" ; }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(ostream &s) { return s ; }
+  } ;
+
+  register_BC<CheckNoslipGridMotion> registerCheckNoslipGridMotion ;
+*/
+  // Checks symmetry and slip boundaries.
+  class CheckSymmetryGridMotion : public BC_Check {
+    public:
+      string BoundaryConditions() { return "symmetry" ; }
+      string VariablesChecked(fact_db &facts) {
+        return "sXZero,sYZero,sZZero,s" ;
+      }
+      bool CheckOptions(const options_list& bc_options,fact_db &facts) {
+        return true ;
+      }
+      ostream &ErrorMessage(ostream &s) { return s ; }
+  } ;
+                                                                                
+  register_BC<CheckSymmetryGridMotion> registerCheckSymmetryGridMotion ;
+
+  
+//---------------------------------------------------------------------------
+// Rules to create constraints which are used to constrain the top and bottom 
+// no-slip surfaces for communication with the structural solver
+//
+//
+  // Constraint used to set top surface
+  class TopCSDConstraint : public pointwise_rule {
+    private:
+ //     const_multiMap face2node ;
+      store<bool> topCSDfaces ;
+    public:
+
+      // Define input and output.
+      TopCSDConstraint() {
+  //      name_store("face2node",face2node) ;
+        name_store("topCSDfaces",topCSDfaces) ;
+        output("topCSDfaces") ; // topCSDnodes -> nodes
+        constraint("ref->top_BCoption") ; // topCSD_BCoption -> faces
+      }
+
+	  void calculate(Entity face) {topCSDfaces[face]=true ;}
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<TopCSDConstraint> registerTopCSDConstraint ;
+
+  // Constraint used to set bottom surface
+  class BottomCSDConstraint : public pointwise_rule {
+    private:
+ //     const_multiMap face2node ;
+      store<bool> bottomCSDfaces ;
+    public:
+
+      // Define input and output.
+      BottomCSDConstraint() {
+  //      name_store("face2node",face2node) ;
+        name_store("bottomCSDfaces",bottomCSDfaces) ;
+        output("bottomCSDfaces") ;
+        constraint("ref->bottom_BCoption") ;
+      }
+
+	  void calculate(Entity face) {bottomCSDfaces[face]=true ;}
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<BottomCSDConstraint> registerBottomCSDConstraint ;
+
+ 
+
+//-----------------------------------------------------------------------------
+// Rules to create constraints which are used to constrain the displacement in
+// a certain Cartesian direction for symmetry boundaries.
+
+  // Constraint used to set top noslip
+  class SXZeroConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> sXZeroNodes ;
+    public:
+
+      // Define input and output.
+      SXZeroConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("sXZeroNodes",sXZeroNodes) ;
+        output("face2node->sXZeroNodes") ;
+        constraint("ref->sXZero_BCoption") ;
+      }
+
+	  void calculate(Entity node) {sXZeroNodes[node]=true ;}
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<SXZeroConstraint> registerSXZeroConstraint ;
+
+  // Constraint used to set y-component of displacement to zero.
+  class SYZeroConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> sYZeroNodes ;
+    public:
+
+      // Define input and output.
+      SYZeroConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("sYZeroNodes",sYZeroNodes) ;
+        output("face2node->sYZeroNodes") ;
+        constraint("ref->sYZero_BCoption") ;
+      }
+
+	  void calculate(Entity node) {sYZeroNodes[node]=true ;}
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<SYZeroConstraint> registerSYZeroConstraint ;
+
+  // Constraint used to set z-component of displacement to zero.
+  class SZZeroConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> sZZeroNodes ;
+    public:
+
+      // Define input and output.
+      SZZeroConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("sZZeroNodes",sZZeroNodes) ;
+        output("face2node->sZZeroNodes") ;
+        constraint("ref->sZZero_BCoption") ;
+      }
+
+	  void calculate(Entity node) {sZZeroNodes[node]=true ;}
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<SZZeroConstraint> registerSZZeroConstraint ;
+
+//-----------------------------------------------------------------------------
+// Rules to create a certain boundary constraints.
+
+  // Create a constraint for node with specified displacement. This constraint
+  // is used during final matrix assembly.
+  class BoundaryDisplacementConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> boundaryDisplacement ;
+    public:
+
+      // Define input and output.
+      BoundaryDisplacementConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("boundaryDisplacement",boundaryDisplacement) ;
+        output("face2node->boundaryDisplacement") ;
+        constraint("ref->s_BCoption") ; // face -> boundary surface specified with s=..
+      }
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {  
+      	cout << "Rank: " << Loci::MPI_rank << ".. Setting the boundaryDisplacement rule" << endl ;
+      	}
+
+  } ;
+
+  register_rule<BoundaryDisplacementConstraint>
+    registerBoundaryDisplacementConstraint ;
+
+ /* // Create a constraint for node with specified displacement. This constraint
+  // is used during final matrix assembly.
+  class NotFlexibleBoundaryDisplacementConstraint : public pointwise_rule {
+    private:
+      //const_multiMap face2node ;
+      store<bool> NotFlexibleBoundaryDisplacement ;
+    public:
+
+      // Define input and output.
+      NotFlexibleBoundaryDisplacementConstraint() {
+        //name_store("face2node",face2node) ;
+        name_store("NotFlexibleBoundaryDisplacement",NotFlexibleBoundaryDisplacement) ;
+        output("NotFlexibleBoundaryDisplacement") ;
+        constraint("s_BCoption,NOT(top_BCoption),NOT(bottom_BCoption)") ; // surface
+        disable_threading() ;
+      }
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {  
+      	cout << "Rank: " << Loci::MPI_rank << ".. Setting the NotFlexbleBoundaryDisplacement rule" << endl ;
+      	}
+
+  } ;
+
+  register_rule<NotFlexibleBoundaryDisplacementConstraint>
+    registerNotFlexibleBoundaryDisplacementConstraint ;
+
+  // Create a constraint for node with specified displacement. This constraint
+  // is used during final matrix assembly.
+  class FlexibleBoundaryDisplacementConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> FlexibleBoundaryDisplacement ;
+    public:
+
+      // Define input and output.
+      FlexibleBoundaryDisplacementConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("FlexibleBoundaryDisplacement",FlexibleBoundaryDisplacement) ;
+        output("face2node->FlexibleBoundaryDisplacement") ;
+        constraint("ref->s_BCoption, ref->NOT(NotFlexibleBoundaryDisplacement)") ;
+        disable_threading() ;
+      }
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {  
+      	cout << "Rank: " << Loci::MPI_rank << ".. Setting the FlexbleBoundaryDisplacement rule" << endl ;
+      	}
+
+  } ;
+
+  register_rule<FlexibleBoundaryDisplacementConstraint>
+    registerFlexibleBoundaryDisplacementConstraint ;*/
+
+// All inlet faces have non-zero diffusion flux.
+  class BoundaryFlexibleBoundaryDisplacementFaceTop : public pointwise_rule {
+    private:
+      store<bool> FlexibleBoundaryDisplacementFace ;
+    public:
+
+      // Define input and output.
+      BoundaryFlexibleBoundaryDisplacementFaceTop() {
+        name_store("FlexibleBoundaryDisplacementFace",FlexibleBoundaryDisplacementFace) ;
+        output("FlexibleBoundaryDisplacementFace") ;
+        constraint("ref->top_BCoption") ;
+      }
+
+      // Assign flag for a single boundary face.
+      void calculate(Entity face) { FlexibleBoundaryDisplacementFace[face]=true ; }
+
+      // Assign flag for a sequence of boundary faces.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+  } ;
+
+  register_rule<BoundaryFlexibleBoundaryDisplacementFaceTop>
+    registerBoundaryFlexibleBoundaryDisplacementFaceTop ;
+
+  // All outlet faces have non-zero diffusion flux.
+  class BoundaryFlexibleBoundaryDisplacementFaceBottom : public pointwise_rule {
+    private:
+      store<bool> FlexibleBoundaryDisplacementFace ;
+    public:
+
+      // Define input and output.
+      BoundaryFlexibleBoundaryDisplacementFaceBottom() {
+        name_store("FlexibleBoundaryDisplacementFace",FlexibleBoundaryDisplacementFace) ;
+        output("FlexibleBoundaryDisplacementFace") ;
+        constraint("ref->bottom_BCoption") ;
+      }
+
+      // Assign flag for a single boundary face.
+      void calculate(Entity face) { FlexibleBoundaryDisplacementFace[face]=true ; }
+
+      // Assign flag for a sequence of boundary faces.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+  } ;
+
+  register_rule<BoundaryFlexibleBoundaryDisplacementFaceBottom>
+    registerBoundaryFlexibleBoundaryDisplacementFaceBottom ;
+
+  class FlexibleBoundaryDisplacementConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2node ;
+      store<bool> FlexibleBoundaryDisplacement ;
+    public:
+
+      // Define input and output.
+      FlexibleBoundaryDisplacementConstraint() {
+        name_store("face2node",face2node) ;
+        name_store("FlexibleBoundaryDisplacement",FlexibleBoundaryDisplacement) ;
+        output("face2node->FlexibleBoundaryDisplacement") ;
+        constraint("FlexibleBoundaryDisplacementFace") ; // face -> boundary surface
+      }
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {  
+      	cout << "Rank: " << Loci::MPI_rank << ".. Setting the FlexibleBoundaryDisplacement rule" << endl ;
+      	}
+
+  } ;
+
+  register_rule<FlexibleBoundaryDisplacementConstraint>
+    registerFlexibleBoundaryDisplacementConstraint ;
+
+
+//-----------------------------------------------------------------------------
+// Rules to create a constraint for all boundary edges belonging to non-symmetry
+// boundaries. Note that this constraint also includes edges which are common
+// between a symmetry and a non-symmetry boundary. This constraint will be
+// determined based on displacement specification options rather than flow
+// solver boundary condition types. All non-symmetry boundaries must have the
+// displacement explicitly specified in some manner.
+
+  // Rule to add nodes on boundaries with the "s=" option to the displacement
+  // boundary condition constraint.
+  class BoundaryNoSymmetryEdgeConstraint : public pointwise_rule {
+    private:
+      const_multiMap face2edge ;
+      store<bool> boundaryNoSymmetryEdges ;
+    public:
+
+      // Define input and output.
+      BoundaryNoSymmetryEdgeConstraint() {
+        name_store("face2edge",face2edge) ;
+        name_store("boundaryNoSymmetryEdges",boundaryNoSymmetryEdges) ;
+        output("face2edge->boundaryNoSymmetryEdges") ;
+        constraint("ref->s_BCoption") ;
+      }
+
+      // Don't really have to do anything here since we are just setting
+      // up a constraint.
+      virtual void compute(const sequence &seq) {}
+
+  } ;
+
+  register_rule<BoundaryNoSymmetryEdgeConstraint>
+    registerBoundaryNoSymmetryEdgeConstraint ;
+
+//-----------------------------------------------------------------------------
+// Displacement boundary conditions. Note that we are assembling and solving
+// the PDE for nodes attached to faces on "symmetry" boundaries.
+
+  // Rule to get the displacement boundary condition value for the "s=" option.
+  class BC_s_compute : public pointwise_rule {
+    private:
+      const_store<Loci::options_list> BC_options ;
+      store<BoundaryDisplacement> s_BC ;
+    public:
+
+      // Define input and output.
+      BC_s_compute() {
+        name_store("BC_options",BC_options) ;
+        name_store("s_BC",s_BC) ;
+        input("BC_options") ;
+        output("s_BC") ;
+        constraint("s_BCoption") ;
+      }
+
+      // Get value for a single entity.
+      void calculate(Entity e) {
+        Loci::option_value_type optionValueType=BC_options[e].getOptionValueType("s") ;
+        if(optionValueType==Loci::REAL){
+          real temp ; BC_options[e].getOptionUnits("s","m",temp) ;
+          s_BC[e].SetConstantValue(vect3d(temp,0.0,0.0)) ; s_BC[e].SetType(0) ;
+          cout << "constantly (non)-moving boundary conditions [real] found" << endl ;
+        }else if(optionValueType==Loci::LIST){
+          vect3d temp ; get_vect3dOption(BC_options[e],"s","m",temp) ;
+          s_BC[e].SetConstantValue(temp) ; s_BC[e].SetType(0) ;
+          cout << "constantly (non)-moving boundary conditions [list] found" << endl ;
+        }else if(optionValueType==Loci::FUNCTION){
+          Loci::options_list::arg_list options ; string name ;
+          BC_options[e].getOption("s",name,options) ;
+          if(name=="rigidBody"){
+          cout << "rigid-body displacement specification" << endl ;
+
+            // Create an options list from the list of arguments so we can
+            // use Ed's parsing stuff to retreive values.
+            string validOptions="sConst:tDir:tMag:tFreq:tPhi:rCenter:rAxis:" ;
+            validOptions+="rAlphaBar:rMag:rFreq:rPhi" ;
+            Loci::options_list rigidBodyOptions(validOptions) ;
+            rigidBodyOptions.Input(options) ;
+
+            // Now extract the options and set the value.
+            char *optionName[]={"sConst","tDir","tMag","tFreq","tPhi",
+              "rCenter","rAxis","rAlphaBar","rMag","rFreq","rPhi"} ;
+            RigidBodyDisplacement rigidBodyDisplacement ;
+            for(unsigned int i=0;i<11;++i){
+              if(rigidBodyOptions.optionExists(optionName[i])){
+
+                // Scalars.
+                if(i==0 || i==2 || i==3 || i==4 || i==7 || i==8 || i==9 ||
+                i==10){
+                  real value ; rigidBodyOptions.getOption(optionName[i],value) ;
+                  if(i==0){ rigidBodyDisplacement.sConst=value ;
+                  }else if(i==2){ rigidBodyDisplacement.tMag=value ;
+                  }else if(i==3){ rigidBodyDisplacement.tFreq=value ;
+                  }else if(i==4){ rigidBodyDisplacement.tPhi=value ;
+                  }else if(i==7){ rigidBodyDisplacement.rAlphaBar=value ;
+                  }else if(i==8){ rigidBodyDisplacement.rMag=value ;
+                  }else if(i==9){ rigidBodyDisplacement.rFreq=value ;
+                  }else if(i==10){ rigidBodyDisplacement.rPhi=value ;
+                  }
+                }
+
+                // Vectors.
+                if(i==1 || i==5 || i==6){
+                  vect3d value=get_vect3d(rigidBodyOptions,optionName[i],"m") ;
+                  if(i==1){ rigidBodyDisplacement.tDir=value ;
+                  }else if(i==5){ rigidBodyDisplacement.rCenter=value ;
+                  }else if(i==6){ rigidBodyDisplacement.rAxis=value ;
+                  }
+                }
+              }
+            }
+            s_BC[e].SetRigidBodyValue(rigidBodyDisplacement) ;
+            s_BC[e].SetType(1) ; // rigidBodyMotion
+          }else if(name=="flexible"){
+          	cout << "Flexible boundary conditions found" << endl ;
+          	s_BC[e].SetType(2) ; 
+          }else{
+            cerr << "Bad displacement boundary condition in .vars file.: " << name  << endl ; Loci::Abort() ;
+          }
+        }else{
+          cerr << "Bad displacement option type in .vars file." << endl ;
+          Loci::Abort() ;
+        }
+      }
+
+      // Loop over entities.
+      void compute(const sequence &seq) { do_loop(seq,this) ; }
+  } ;
+
+  register_rule<BC_s_compute> register_BC_s_compute ;
+
+  // Rule for boundary faces with specified displacement. Assigns displacement
+  // value to all nodes connected to boundary faces that have the property s_BC.
+  // Note that we have no way of determining in what order the faces will be
+  // processed, so the user is responsible for ensuring that all boundary
+  // patches that have a common line of nodes have the same displacement
+  // boundary condition.
+//  class BoundaryDisplacementSpecification : public pointwise_rule {
+  class BoundaryDisplacementSpecification : public pointwise_rule {	
+    private:
+      const_Map ref ;
+      const_multiMap face2node ;
+      const_param<real> solutionTime ;
+      const_param<real> timeStep ;
+      const_store<BoundaryDisplacement> s_BC ;
+      const_store<vect3d> pos ;
+      store<vect3d> node_s_b ;
+//      store<bool> boundaryNodes ;
+    public:
+
+      // Define input and output.
+      BoundaryDisplacementSpecification() {
+        name_store("ref",ref) ;
+        name_store("face2node",face2node) ;
+        name_store("stime{n}",solutionTime) ;
+        name_store("timeStep{n}",timeStep) ;
+        name_store("s_BC{n}",s_BC) ;
+        name_store("pos",pos) ;
+        name_store("node_s_b{n}",node_s_b) ;
+ //       name_store("boundaryNodes",boundaryNodes) ;
+        input("stime{n},timeStep{n},ref->s_BC{n},face2node->pos") ;
+        output("face2node->node_s_b{n}") ;
+//        output("face2node->boundaryNodes") ;
+		constraint("gridMotionTimeDependent") ;
+      }
+
+      // Set boundary displacement for nodes attached to this face. Note that
+      // this rule is actually setting each node's displacement value multiple
+      // times (the same value each time). We should fix this, but for now
+      // we'll just leave it.
+      void calculate(Entity face) {
+		for(const int *ni=face2node.begin(face);ni!=face2node.end(face);++ni){
+		  node_s_b[*ni]=s_BC[ref[face]].Value(*solutionTime+*timeStep,pos[*ni]) ;
+//cout << "n,s: " << *ni << " " << node_s_b[*ni] << endl ;
+//			boundaryNodes[*ni]=true ;
+		}
+      }
+
+      // Loop over faces.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+                                                                                
+  } ;
+
+  register_rule<BoundaryDisplacementSpecification>
+    registerBoundaryDisplacementSpecification ;
+    
+/*
+  class BoundaryDisplacementSpecificationSolutionDependentUnit : public unit_rule {
+    private:
+      const_Map ref ;
+      const_multiMap face2node ;
+      const_param<real> solutionTime ;
+      const_param<real> timeStep ;
+      const_store<BoundaryDisplacement> s_BC ;
+      const_store<vect3d> pos ;
+      store<vect3d> node_s_b ;
+//      store<bool> boundaryNodes ;
+			vect3d temp3d ;
+    public:
+
+      // Define input and output.
+      BoundaryDisplacementSpecificationSolutionDependentUnit() {
+        name_store("ref",ref) ;
+        name_store("face2node",face2node) ;
+        name_store("s_BC{n}",s_BC) ;
+        name_store("node_s_b{n}",node_s_b) ;
+ //       name_store("boundaryNodes",boundaryNodes) ;
+        input("ref->s_BC{n}") ;
+        output("face2node->node_s_b{n}") ;
+				constraint("gridMotionSolutionDependent") ; // top and bottom nodes done in FSI_CSD2CFD.loci
+//        output("face2node->boundaryNodes") ;
+      }
+
+      // Set boundary displacement for nodes attached to this face. Note that
+      // this rule is actually setting each node's displacement value multiple
+      // times (the same value each time). We should fix this, but for now
+      // we'll just leave it.
+      void calculate(Entity face) {
+				for(const int *ni=face2node.begin(face);ni!=face2node.end(face);++ni){
+				  node_s_b[*ni]= temp3d ;
+				}
+      }
+
+      // Loop over faces.
+      virtual void compute(const sequence &seq) { 
+      	temp3d = vect3d(0.0, 0.0, 0.0);
+      	do_loop(seq,this) ; }
+                                                                                
+  } ;
+
+  register_rule<BoundaryDisplacementSpecificationSolutionDependentUnit>
+    registerBoundaryDisplacementSpecificationSolutionDependentUnit ;
+*/
+
+
+ // class BoundaryDisplacementSpecificationSolutionDependentApply : public apply_rule<store<vect3d>,Loci::NullOp<vect3d> > {
+  class BoundaryDisplacementSpecificationSolutionDependentApply : public pointwise_rule {
+    private:
+      const_Map ref ;
+      const_multiMap face2node ;
+      const_param<real> solutionTime ;
+      const_param<real> timeStep ;
+      const_store<BoundaryDisplacement> s_BC ;
+      const_store<vect3d> pos ;
+      store<vect3d> node_s_b_bc ;
+//      store<bool> boundaryNodes ;
+    public:
+
+      // Define input and output.
+      BoundaryDisplacementSpecificationSolutionDependentApply() {
+        name_store("ref",ref) ;
+        name_store("face2node",face2node) ;
+        name_store("stime{n}",solutionTime) ;
+        name_store("timeStep{n}",timeStep) ;
+        name_store("s_BC{n}",s_BC) ;
+        name_store("pos",pos) ;
+        name_store("node_s_b_bc{n}",node_s_b_bc) ;
+ //       name_store("boundaryNodes",boundaryNodes) ;
+        input("stime{n},timeStep{n},ref->s_BC{n},face2node->pos") ;
+        output("face2node->node_s_b_bc{n}") ;
+				constraint("gridMotionSolutionDependent") ;
+				constraint("ref->s_BCoption") ; // top and bottom nodes done in FSI_CSD2CFD.loci, here just 0.0
+//				disable_threading() ;
+//        output("face2node->boundaryNodes") ;
+      }
+
+      // Set boundary displacement for nodes attached to this face. Note that
+      // this rule is actually setting each node's displacement value multiple
+      // times (the same value each time). We should fix this, but for now
+      // we'll just leave it.
+      void calculate(Entity face) {
+		for(const int *ni=face2node.begin(face);ni!=face2node.end(face);++ni){
+		  node_s_b_bc[*ni]=s_BC[ref[face]].Value(*solutionTime+*timeStep,pos[*ni]) ;
+//cout << "n,s: " << *ni << " " << node_s_b[*ni] << endl ;
+//			boundaryNodes[*ni]=true ;
+		}
+      }
+
+      // Loop over faces.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+                                                                                
+  } ;
+
+  register_rule<BoundaryDisplacementSpecificationSolutionDependentApply>
+    registerBoundaryDisplacementSpecificationSolutionDependentApply ;
+
+}

@@ -1,0 +1,23 @@
+
+// Hacks, these should be in chem.lh
+$type mixture_f         storeVec<real> ;
+$type numSpecies param<int> ;
+
+// mms stuff	
+$type massGeneralSrc(loc) storeVec<real> ;
+$type momentumGeneralSrc(loc) store<vect3d> ;
+$type energyGeneralSrc(loc) store<real> ;
+
+$type SAGeneralSrc(loc) store<real> ;
+
+$type rkGeneralSrc(loc) store<real> ;
+$type rwGeneralSrc(loc) store<real> ;
+
+$type mmsPressure(loc) store<real> ;
+$type mmsRho(loc) storeVec<real> ;
+$type mmsVelocity(loc) store<vect3d> ;
+
+$type mms_nu_t(loc) store<real> ;
+
+$type mms_k(loc) store<real> ;
+$type mms_w(loc) store<real> ;

@@ -1,0 +1,297 @@
+//-----------------------------------------------------------------------------
+// Description: This file contains some of the basic rules to read in the vars file inputs related to the CSD and FSI.
+//-----------------------------------------------------------------------------
+
+
+// Loci includes.
+#include <Loci.h>
+
+// StreamUns includes.
+#include "const.h"
+#include "sciTypes.h"
+#include "varsFileInputs.h"
+
+$include "FSI_CSDvariables.lh"
+
+namespace streamUns {
+
+  //---------------------------------------------------------------------------
+  // Setup Rules.
+ 
+ 
+ 
+  $rule default(CFDMaxTotalInnerIterations) {
+  	$CFDMaxTotalInnerIterations = 10000; // aluminum
+  } 
+ 
+  $rule default(CSDE1) {
+  	$CSDE1 = 70.e9; // aluminum
+  }
+  
+  $rule default(CSDE2) {
+  	$CSDE2 = 70.e9; // aluminum
+  }
+  
+  $rule default(CSDnu12) {
+  	$CSDnu12 = 0.3; // aluminum
+  }
+  
+  $rule default(CSDnu21) {
+  	$CSDnu21 = 0.3; // aluminum
+  }
+  
+  $rule default(CSDG12) {
+  	$CSDG12 = 27.e9; // aluminum
+  }
+  
+  $rule default(CSDrhoStructure) {
+  	$CSDrhoStructure = 2700.; // aluminum
+  }
+  
+  $rule default(CSDthicknessStructure) {
+  	$CSDthicknessStructure = 1.e-3; // 0.001
+  }
+  
+  $rule default(CSDintegrationScheme) {
+  	$CSDintegrationScheme = 1; // newmark
+  }
+  
+  $rule default(CSDdelta) {
+  	$CSDdelta = 1.e-4; // default
+  }
+  
+  $rule default(CSDswitchStiffening) {
+  	$CSDswitchStiffening = 1; // turned on
+  }
+
+// Not used    
+//  $rule default(CSDexcitationType) {
+//  	$CSDexcitationType = 0; // flapping
+//  }  
+  
+  $rule default(CSDflappingType) {
+  	$CSDflappingType = 1; // sin
+  }  
+  
+  $rule default(CSDplungingType) {
+  	$CSDplungingType = 1; // sin
+  }  
+  
+  $rule default(CSDgenAlphaCoeff) {
+  	$CSDgenAlphaCoeff = 0.4; // 0.4 
+  }  
+  
+  $rule default(CSDnewmarkGammaCoeff) {
+  	$CSDnewmarkGammaCoeff = 0.5; // linear
+  }  
+  
+  $rule default(CSDnewmarkBetaCoeff) {
+  	$CSDnewmarkBetaCoeff = 0.25; // linear
+  }  
+  
+  $rule default(CSDdampingCoeff1) {
+  	$CSDdampingCoeff1 = 0.; // no damping
+  }
+
+  $rule default(CSDfrequency) {
+  	$CSDfrequency = 1.; // =f, NOT omega!
+  }
+  
+  $rule default(CSDdampingCoeff2) {
+  	$CSDdampingCoeff2 = 0.; // no damping
+  }
+  
+  $rule default(CSDplungeAmplitudeX) {
+  	$CSDplungeAmplitudeX = 0.; // no plunging
+  }
+  
+  $rule default(CSDplungeAmplitudeY) {
+  	$CSDplungeAmplitudeY = 0.; // no plunging
+  }
+  
+  $rule default(CSDplungeAmplitudeZ) {
+  	$CSDplungeAmplitudeZ = 0.; // no plunging
+  }
+   
+  $rule default(CSDflappingAmplitudeX) {
+  	$CSDflappingAmplitudeX = 15.; // 15 deg
+  }
+  
+  $rule default(CSDflappingAmplitudeY) {
+  	$CSDflappingAmplitudeY = 0.; // 0.
+  }
+  
+  $rule default(CSDflappingAmplitudeZ) {
+  	$CSDflappingAmplitudeZ = 0.; // 0.
+  }
+    
+  $rule default(CSDstartingTimeStep) {
+  	$CSDstartingTimeStep = 0; // 0.
+  }
+  
+  $rule default(CSDdimension) {
+  	$CSDdimension = 3; // 3 -> 3D, 2 -> 2D
+  }
+  
+  $rule default(CSDYorigin) {
+  	$CSDYorigin = 0.0; // CSD mesh assumed to be a plate with its Y (height) coordinate being this value. Then when interpolating to&from CFD the difference between the top and bottom CFD surfaces can be eliminated
+  }
+  
+  $rule default(CSDtipNode) {
+  	$CSDtipNode = 1; // 3 -> 3D, 2 -> 2D
+  }
+  
+  $rule default(CSD2dSpanCenter) {
+  	//if ($CSDdimension==2) {
+  		$CSD2dSpanCenter = 0.5; // 3 -> 3D, 2 -> 2D
+ // 	} else {
+  //		cerr << "CSDdimension needs to be set to 2" << endl ;
+  //		Loci::Abort() ;
+  //	}
+  }
+  
+  $rule default(FSICouplingMethod) { // create Constraint for the FSICoupling
+  	// nothing now
+  	$FSICouplingMethod = "none" ;
+  	
+  }
+   
+  $rule constraint(FSICoupling<-FSICouplingMethod) {
+  	$FSICoupling = EMPTY ;
+  	if ($FSICouplingMethod == "none") {
+  		 if (Loci::MPI_rank==0) cout << "FSI Coupling off: " << $FSICouplingMethod << endl;
+  	} else {
+  		$FSICoupling = ~EMPTY ;
+  		if (Loci::MPI_rank==0) cout << "FSI Coupling on: " << $FSICouplingMethod << endl;
+  	}		
+  }
+   
+  $rule constraint(FSINLAMS,FSIEULERBEAM,FSI3DCONT,FSIPRESCRIBED<-FSICouplingMethod) {
+  	if ($FSICouplingMethod == "none") {
+  		 if (Loci::MPI_rank==0) cout << "FSI Coupling off: " << $FSICouplingMethod << endl;
+  	} else {
+  		if (Loci::MPI_rank==0) cout << "FSI Coupling on: " << $FSICouplingMethod << endl;
+			if ($FSICouplingMethod == "NLAMS") {
+				$FSINLAMS = ~EMPTY ;
+				$FSIEULERBEAM = EMPTY ;
+				$FSI3DCONT = EMPTY ;
+				$FSIPRESCRIBED = EMPTY ;
+			} else if ($FSICouplingMethod == "EULERBEAM") {
+				$FSINLAMS = EMPTY ;
+				$FSIEULERBEAM = ~EMPTY ;
+				$FSI3DCONT = EMPTY ;
+				$FSIPRESCRIBED = EMPTY ;
+			} else if ($FSICouplingMethod == "3DCONT") {
+				$FSINLAMS = EMPTY ;
+				$FSIEULERBEAM = EMPTY ;
+				$FSI3DCONT = ~EMPTY ;
+				$FSIPRESCRIBED = EMPTY ;
+			} else if ($FSICouplingMethod == "PRESCRIBED") {
+				$FSINLAMS = EMPTY ;
+				$FSIEULERBEAM = EMPTY ;
+				$FSI3DCONT = EMPTY ;
+				$FSIPRESCRIBED = ~EMPTY ;
+			}	else {
+				cerr << "FSI Coupling method not recognized" << endl ;
+				cerr << "Available FSI Coupling methods are none, NLAMS, EULERBEAM, 3DCONT, PRESCRIBED" << endl ;
+				Loci::Abort();  
+			}				
+		}
+  }   
+   
+  $rule default(CSDMeshFilename) {
+ 		$CSDMeshFilename="trimesh.dat" ;
+ 	}
+ 	
+ 	$rule default(CSDConnectivityFilename) {
+ 		$CSDConnectivityFilename="connect.dat" ;
+ 	}
+ 	
+ 	$rule default(CSDBCFilename) {
+ 		$CSDBCFilename="bc.dat" ;
+ 	}
+ 	
+  $rule default(FSIRBFr) {
+  	$FSIRBFr = 2.; // 2
+  }
+    
+  $rule default(FSIRBFa) {
+  	$FSIRBFa = 0.001; // 2
+  }
+    
+  $rule default(FSIRBFnr) {
+  	$FSIRBFnr = 2; // 2
+  }
+  
+    
+  $rule default(FSIRBFMaxLinearSolverIterations) {
+  	$FSIRBFMaxLinearSolverIterations = 10; // 2
+  }
+    
+  $rule default(FSIRBFTolerance) {
+  	$FSIRBFTolerance = 1.e-3; // 2
+  }      
+
+  $rule default(FSICSD2CFDRBFr) {
+  	$FSICSD2CFDRBFr = 2.; // 2
+  }
+    
+  $rule default(FSICSD2CFDRBFa) {
+  	$FSICSD2CFDRBFa = 0.001; // 2
+  }
+    
+  $rule default(FSICSD2CFDRBFnr) {
+  	$FSICSD2CFDRBFnr = 2; // 2
+  }
+  
+    
+  $rule default(FSICSD2CFDRBFMaxLinearSolverIterations) {
+  	$FSICSD2CFDRBFMaxLinearSolverIterations = 10; // 2
+  }
+    
+  $rule default(FSICSD2CFDRBFTolerance) {
+  	$FSICSD2CFDRBFTolerance = 1.e-3; // 2
+  }     
+  
+  $rule default(FSIIterationTolerance) {
+  	$FSIIterationTolerance = 1.e-5; // 2
+  }       
+  
+  $rule default(FSIIterationMinimum) {
+  	$FSIIterationMinimum = 5; // 2
+  }
+  
+  $rule default(maxIterationsPerFSI) {
+  	$maxIterationsPerFSI = 5; // 2
+  	if ($maxIterationsPerFSI<=1) {
+	  if (Loci::MPI_rank==0) cerr << "maxIterationsPerFSI should be larger than 1" << endl ;
+	}
+  }  
+    
+  $rule optional(CSDEulerXstart) {
+  	$CSDEulerXstart = 0; // 2
+  }           
+
+  $rule optional(CSDEulerXend) {
+  	$CSDEulerXend = 1; // 2
+  }           
+ 
+  $rule optional(CSDEulerXnum) {
+  	$CSDEulerXnum = 10; // 2
+  }                 
+  
+  $rule optional(CSDEulerChord) {
+  	$CSDEulerChord = 1.; // 2
+  }   
+
+  $rule optional(CSDEulerAxis) {
+  	$CSDEulerAxis = 0; // // beam direction: 0->x, 1->y, 2->z
+  	if (Loci::MPI_rank==0) {
+	  cout << "CSDEulerAxis=" ;
+	  if ($CSDEulerAxis==0) cout << "x" << endl ;
+	  if ($CSDEulerAxis==1) cout << "y" << endl ;
+	  if ($CSDEulerAxis==2) cout << "z" << endl ;
+	}
+  }
+}
+   

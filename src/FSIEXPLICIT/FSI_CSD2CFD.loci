@@ -1,0 +1,583 @@
+//-----------------------------------------------------------------------------
+// Description: This file contains rules for assembling and solving the linear
+//   elasticity equations for the movement of interior nodes given the
+//   boundary node displacements.
+//-----------------------------------------------------------------------------
+                                                                                
+// Standard library includes.
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+//#include <cstdlib> // for exit function
+#include <string>
+#include <sstream>
+//#include <cmath>
+#include <vector>
+using std::vector ;
+                                                                                
+// Loci includes.
+#include<Loci>
+using Loci::singleton_rule ;
+using Loci::pointwise_rule ;
+using Loci::unit_rule ;
+using Loci::apply_rule ;
+using Loci::sequence ;
+using Loci::entitySet ;
+using Loci::EMPTY ;
+using Loci::Entity ;
+using Loci::register_rule ;
+using Loci::blackbox ;
+using Loci::const_blackbox ;
+using Loci::param ;
+using Loci::const_param ;
+using Loci::store ;
+using Loci::const_store ;
+using Loci::const_Map ;
+using Loci::const_multiMap ;
+using Loci::const_MapVec ;
+using Loci::const_storeVec ;
+
+                        
+
+// PETSC includes.
+#include <petsc.h>
+#include <petscerror.h>
+#include <petscksp.h>   
+#include <petscpc.h>              
+
+//#include "hypre.h"
+
+// Create a namespace for the PETSC objects so there is no confusion. Note that
+// there is already a type "Mat" defined by Loci.
+namespace Petsc {
+  typedef struct _p_Vec* Vec ;
+  typedef struct _p_Mat* Mat ;
+  typedef struct _p_KSP* KSP ;
+} ;
+
+                                      
+// boost::ublas includes
+#include <boost/numeric/ublas/matrix.hpp>
+
+namespace ublas = boost::numeric::ublas ;                        
+                        
+#include <mpi.h>
+                                                                                
+// StreamUns includes.
+#include "sciTypes.h"                        
+                        
+// CSDvariables
+$include "FSI_CSDvariables.lh"
+
+// RBF
+#include "rbf.h"
+
+// delim
+#include "delim.h"
+
+namespace streamUns {
+
+
+	// delimiter
+	//delim = ", " ;
+	
+//-----------------------------------------------------------------------------
+// Wrapper classes for PETSC objects. These have been created primarily to
+// handle memory management.
+  
+  // Wrapper for Vec. Note that we cannot check the success of the destroy in
+  // the destructor since the destructor cannot return a value.
+  class PETSCCSD2CFDVector { // sequential vector
+    private:
+      bool created ;
+      mutable Petsc::Vec v ;
+    public:
+      PETSCCSD2CFDVector() : created(false) {}
+      ~PETSCCSD2CFDVector() { if(created) VecDestroy(v) ; }
+    public:
+      int AssemblyBegin() const {
+        int ierr=VecAssemblyBegin(v) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int AssemblyEnd() const {
+        int ierr=VecAssemblyEnd(v) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int Create(int localSize,int globalSize) {
+        if(created) return 0 ;
+        int ierr=VecCreateSeq(PETSC_COMM_SELF, localSize, &v) ; CHKERRQ(ierr) ;  
+        //int ierr=VecCreate(PETSC_COMM_WORLD,&v) ; CHKERRQ(ierr) ;        
+        //ierr=VecSetSizes(v,localSize,globalSize) ; CHKERRQ(ierr) ;
+        //ierr=VecSetFromOptions(v) ; CHKERRQ(ierr) ;
+        created=true ; return 0 ;
+      }
+	  int Destroy() const {
+		  int ierr=VecDestroy(v) ; CHKERRQ(ierr) ;		  
+		  return ierr ;
+	  }
+      const Petsc::Vec& Data() const { return v ; }
+      int DuplicateFrom(const PETSCCSD2CFDVector &a) {
+        if(created) return 0 ; int ierr=VecDuplicate(a.v,&v) ; CHKERRQ(ierr) ;
+        created=true ; return 0 ;
+      }
+      int GetArray(PetscScalar **array) const {
+         int ierr=VecGetArray(v,array) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int GetOwnershipRange(int *low,int *high) const {
+        int ierr=VecGetOwnershipRange(v,low,high) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int RestoreArray(PetscScalar **array) const {
+        int ierr=VecRestoreArray(v,array) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int SetValue(const int *index,const PetscScalar *value) const {
+        int ierr=VecSetValues(v,1,index,value,INSERT_VALUES) ; CHKERRQ(ierr) ;
+        return 0 ;
+      }
+  } ;
+
+  // Wrapper for Vec. In this version we have three vectors which are used in
+  // the vector solver rules. Note that we cannot check the success of the
+  // destroy in the destructor since the destructor cannot return a value.
+  class PETSCCSD2CFDMultiVector {
+    private:
+      bool created ;
+      mutable Petsc::Vec vX,vY,vZ ;
+    public:
+      PETSCCSD2CFDMultiVector() : created(false) {}
+      ~PETSCCSD2CFDMultiVector() {
+        if(created){ VecDestroy(vX) ; VecDestroy(vY) ; VecDestroy(vZ) ; }
+      }
+    public:
+      int AssemblyBegin() const {
+        int ierr=VecAssemblyBegin(vX) ; CHKERRQ(ierr) ;
+        ierr=VecAssemblyBegin(vY) ; CHKERRQ(ierr) ;
+        ierr=VecAssemblyBegin(vZ) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int AssemblyEnd() const {
+        int ierr=VecAssemblyEnd(vX) ; CHKERRQ(ierr) ;
+        ierr=VecAssemblyEnd(vY) ; CHKERRQ(ierr) ;
+        ierr=VecAssemblyEnd(vZ) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int Create(int localSize,int globalSize) {
+        if(created) return 0 ;
+        int ierr ;
+        ierr=VecCreateSeq(PETSC_COMM_SELF, localSize, &vX) ; CHKERRQ(ierr) ; 	
+        ierr=VecCreateSeq(PETSC_COMM_SELF, localSize, &vY) ; CHKERRQ(ierr) ; 	
+        ierr=VecCreateSeq(PETSC_COMM_SELF, localSize, &vZ) ; CHKERRQ(ierr) ; 	
+        //int ierr=VecCreate(PETSC_COMM_WORLD,&vX) ; CHKERRQ(ierr) ;
+        //ierr=VecSetSizes(vX,localSize,globalSize) ; CHKERRQ(ierr) ;
+        //ierr=VecSetFromOptions(vX) ; CHKERRQ(ierr) ;
+        //ierr=VecCreate(PETSC_COMM_WORLD,&vY) ; CHKERRQ(ierr) ;
+        //ierr=VecSetSizes(vY,localSize,globalSize) ; CHKERRQ(ierr) ;
+        //ierr=VecSetFromOptions(vY) ; CHKERRQ(ierr) ;
+        //ierr=VecCreate(PETSC_COMM_WORLD,&vZ) ; CHKERRQ(ierr) ;
+        //ierr=VecSetSizes(vZ,localSize,globalSize) ; CHKERRQ(ierr) ;
+       // ierr=VecSetFromOptions(vZ) ; CHKERRQ(ierr) ;
+        created=true ; return 0 ;
+      }
+	  int Destroy() const {
+		  int ierr=VecDestroy(vX) ; CHKERRQ(ierr) ;
+		  ierr=VecDestroy(vY) ; CHKERRQ(ierr) ;
+		  ierr=VecDestroy(vZ) ; CHKERRQ(ierr) ;
+		  return ierr ;
+	  }
+      const Petsc::Vec& DataX() const { return vX ; }
+      const Petsc::Vec& DataY() const { return vY ; }
+      const Petsc::Vec& DataZ() const { return vZ ; }
+      int DuplicateFrom(const PETSCCSD2CFDMultiVector &a) {
+        if(created) return 0 ;
+        int ierr=VecDuplicate(a.vX,&vX) ; CHKERRQ(ierr) ;
+        ierr=VecDuplicate(a.vY,&vY) ; CHKERRQ(ierr) ;
+        ierr=VecDuplicate(a.vZ,&vZ) ; CHKERRQ(ierr) ;
+        created=true ; return 0 ;
+      }
+      int GetArray(PetscScalar **arrayX,PetscScalar **arrayY,PetscScalar
+      **arrayZ) const {
+         int ierr=VecGetArray(vX,arrayX) ; CHKERRQ(ierr) ;
+         ierr=VecGetArray(vY,arrayY) ; CHKERRQ(ierr) ;
+         ierr=VecGetArray(vZ,arrayZ) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int GetOwnershipRange(int *low,int *high) const {
+        int ierr=VecGetOwnershipRange(vX,low,high) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int RestoreArray(PetscScalar **arrayX,PetscScalar **arrayY,PetscScalar
+      **arrayZ) const {
+        int ierr=VecRestoreArray(vX,arrayX) ; CHKERRQ(ierr) ;
+        ierr=VecRestoreArray(vY,arrayY) ; CHKERRQ(ierr) ;
+        ierr=VecRestoreArray(vZ,arrayZ) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int SetValue(const int *index,const PetscScalar *valueX,const PetscScalar
+      *valueY,const PetscScalar *valueZ) const {
+        int ierr=VecSetValues(vX,1,index,valueX,INSERT_VALUES) ; CHKERRQ(ierr) ;
+        ierr=VecSetValues(vY,1,index,valueY,INSERT_VALUES) ; CHKERRQ(ierr) ;
+        ierr=VecSetValues(vZ,1,index,valueZ,INSERT_VALUES) ; CHKERRQ(ierr) ;
+        return 0 ;
+      }
+  } ;
+
+  // Wrapper for Mat. This class assumes a square matrix. Note that we cannot
+  // check the success of the destroy in the destructor since the destructor
+  // cannot return a value.
+  class PETSCCSD2CFDMatrix {
+    private:
+      bool created ;
+      mutable Petsc::Mat m ;
+    public:
+      PETSCCSD2CFDMatrix() : created(false) {}
+      ~PETSCCSD2CFDMatrix() { if(created) MatDestroy(m) ; }
+    public:
+      int AssemblyBegin() const {
+        int ierr=MatAssemblyBegin(m,MAT_FINAL_ASSEMBLY) ;
+        CHKERRQ(ierr) ; return 0 ;
+      }
+      int AssemblyEnd() const {
+       int ierr=MatAssemblyEnd(m,MAT_FINAL_ASSEMBLY) ;
+       CHKERRQ(ierr) ; return 0 ;
+      }
+      int Create(int numLocalRow,int numGlobalRow,int *numDiagonalNonZero,int
+      *numOffDiagonalNonZero) {
+        if(created) return 0 ;
+        //if(Loci::MPI_processes>1){
+        //  int ierr=MatCreateMPIAIJ(PETSC_COMM_WORLD,numLocalRow,numLocalRow,
+        //    numGlobalRow,numGlobalRow,0,numDiagonalNonZero,0,
+        //    numOffDiagonalNonZero,&m) ; CHKERRQ(ierr) ;
+        //}else{
+          int ierr=MatCreateSeqAIJ(PETSC_COMM_SELF,numGlobalRow,numGlobalRow,0,numDiagonalNonZero,&m) ; CHKERRQ(ierr) ;
+        //}
+        created=true ; return 0 ;
+      }
+	  int Destroy() const {
+		  int ierr=MatDestroy(m) ; CHKERRQ(ierr) ;
+		  return ierr ;
+	  }
+      const Petsc::Mat& Data() const { return m ; }
+	  int GetInfo() {
+		  MatInfo info;
+		  double mal, nz_alloc, nz_used, nz_un ;
+		  MatGetInfo(m,MAT_LOCAL,&info);
+		  mal = info.mallocs; nz_alloc=info.nz_allocated; nz_used=info.nz_used; nz_un=info.nz_unneeded ;
+		  cout << "Displacement Interpolation CSD -> CFD: PETSC info: Number of mallocs during MatSetValues(): " << mal << delim << "Number of nonzeros (allocated, used, unneeded): " << nz_alloc << delim << nz_used << delim << nz_un << endl ;
+		  return 0;
+	  }
+      int GetOwnershipRange(int *firstRow,int *lastRow) {
+        int ierr=MatGetOwnershipRange(m,firstRow,lastRow) ; CHKERRQ(ierr) ;
+        return 0 ;
+      }
+      int SetRowValues(int rowNum,int numColumn,int *columnIndices,PetscScalar
+      *columnValues) const {
+        int ierr=MatSetValues(m,1,&rowNum,numColumn,columnIndices,columnValues,
+          INSERT_VALUES) ; CHKERRQ(ierr) ; return 0 ;
+      }
+  } ;
+  
+  // Wrapper for KSP.
+  class PETSCCSD2CFDKsp {
+    private:
+      bool created ;
+      mutable Petsc::KSP ksp ;
+    public:
+      PETSCCSD2CFDKsp() : created(false) {}
+      ~PETSCCSD2CFDKsp() { if(created) KSPDestroy(ksp) ; }
+    public:
+      int Create() {
+        if(created) return 0 ;
+        //int ierr=KSPCreate(PETSC_COMM_WORLD,&ksp) ; CHKERRQ(ierr) ;
+        int ierr=KSPCreate(PETSC_COMM_SELF,&ksp) ; CHKERRQ(ierr) ;
+        created=true ; return 0 ;
+      }
+	  int Destroy() const {
+		  int ierr=KSPDestroy(ksp) ; CHKERRQ(ierr) ;
+		  return ierr ;
+	  }
+	  int GetConvergedReason() const {
+		  KSPConvergedReason reason ;
+		  KSPGetConvergedReason(ksp, &reason) ;
+		  if (Loci::MPI_rank==0) {
+			  if (reason==KSP_CONVERGED_RTOL) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_RTOL" << endl ;
+			  } else if (reason==KSP_CONVERGED_ATOL) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_ATOL" << endl ;
+			  } else if (reason==KSP_CONVERGED_ITS) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_ITS" << endl ;
+			  } else if (reason==KSP_DIVERGED_NULL) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_NULL" << endl ;
+			  } else if (reason==KSP_DIVERGED_ITS) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_ITS" << endl ;
+			  } else if (reason==KSP_DIVERGED_DTOL) {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_DTOL" << endl ;
+			  } else {
+				  cout << "CSD2CFD: PETSC solver: GetConvergedReason = " << reason << endl ;
+			  }
+		  }
+		  return 0;
+	  }
+      int GetIterationNumber() const {
+        int numIterations ; KSPGetIterationNumber(ksp,&numIterations) ;
+        return numIterations ;
+      }
+      int GetPC(PC *pc) const {
+        int ierr=KSPGetPC(ksp,pc) ; CHKERRQ(ierr) ; return 0 ;
+      }
+	  int SetInitialGuessNonzero() const {
+        int ierr=KSPSetInitialGuessNonzero(ksp, PETSC_TRUE) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int SetFromOptions() {
+        int ierr=KSPSetFromOptions(ksp) ; CHKERRQ(ierr) ; return 0 ;
+      }
+      int SetOperators(const PETSCCSD2CFDMatrix &m) const {
+        int ierr=KSPSetOperators(ksp,m.Data(),m.Data(),DIFFERENT_NONZERO_PATTERN) ; // SAME_NONZERO_PATTERN
+        CHKERRQ(ierr) ; return 0 ;
+      }
+      void SetTolerances(real relativeTolerance,real absoluteTolerance,int maxIterations) const {
+        KSPSetTolerances(ksp,relativeTolerance,absoluteTolerance,PETSC_DEFAULT,maxIterations) ;
+      }
+      int SetRestart(int Restart) {
+		    int ierr=KSPGMRESSetRestart(ksp, Restart) ;
+		     CHKERRQ(ierr) ; return ierr ;
+	    }
+      int Solve(const PETSCCSD2CFDVector &rhs, PETSCCSD2CFDVector &sol) const {
+//      int numIteration ;
+        int ierr=KSPSolve(ksp,rhs.Data(),sol.Data()) ; CHKERRQ(ierr) ;
+//KSPGetIterationNumber(ksp,&numIteration) ;
+//cout << "petsc iterations: " << numIteration << endl ;
+        return ierr ;
+      }
+      int SolveVector(const PETSCCSD2CFDMultiVector &rhs, PETSCCSD2CFDMultiVector &sol)
+      const {
+//      int numIteration ;
+        int ierr=KSPSolve(ksp,rhs.DataX(),sol.DataX()) ; CHKERRQ(ierr) ;
+        ierr=KSPSolve(ksp,rhs.DataY(),sol.DataY()) ; CHKERRQ(ierr) ;
+        ierr=KSPSolve(ksp,rhs.DataZ(),sol.DataZ()) ; CHKERRQ(ierr) ;
+//KSPGetIterationNumber(ksp,&numIteration) ;
+//cout << "petsc iterations: " << numIteration << endl ;
+        return ierr ;
+      }
+  } ;
+
+
+//$type FSICoupling Constraint ;
+//$type bottomCSDnodes store<bool> ;
+//$type topCSDnodes store<bool> ;
+
+$type CFDIterationFinished param<bool> ;
+$type ncycle param<int> ;
+
+$rule blackbox(CSDRBFweights{n}<-CSDnodes_ic,CSDdisplacementsStar{n},ncycle{n},FSICSD2CFDRBFr,FSICSD2CFDRBFa,FSICSD2CFDRBFnr,FSICSD2CFDRBFMaxLinearSolverIterations,FSICSD2CFDRBFTolerance),
+			constraint(gridMotionTimeDependent{n}),
+			option(disable_threading),
+			prelude  {
+	
+		if (Loci::MPI_rank==0) cout << "Displacement Interpolation CSD -> CFD: Starting" << endl ;
+		
+		if (Loci::MPI_rank==0) cout << "Displacement Interpolation CSD -> CFD: Starting, CFDIterationFinished" << endl ;
+		int p = Loci::MPI_processes; int rank = Loci::MPI_rank ;
+		PetscScalar valuex, valuey, valuez ;
+		real distance=0. ;
+		int columnIndex ;
+		real r=(*$FSICSD2CFDRBFr), a=(*$FSICSD2CFDRBFa) ;
+		int rbfNumber = (*$FSICSD2CFDRBFnr) ; // we get input as reals, convert to int
+		int linearSolverMaxIteration = (*$FSICSD2CFDRBFMaxLinearSolverIterations) ; 
+		real linearSolverTolerance = *$FSICSD2CFDRBFTolerance;
+		int dimension = 3;
+		int Nb = (*$CSDnodes_ic).size1() ;
+		int Nbd1 = Nb + dimension +1 ;
+		
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Nb = " << Nb << ", Nbd1 = " << Nbd1 << endl ;
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Assembling RHS" << endl ;
+		// Assemble the RHS vectors
+		PETSCCSD2CFDMultiVector FSI_RHS_vector, FSI_phi ; // declare RHS vector
+		FSI_RHS_vector.Create(Nbd1, Nbd1) ; // create RHS vector
+		for(int i=0;i<Nb;++i) {
+			valuex=(*$CSDdisplacementsStar{n})(i,0);
+			valuey=(*$CSDdisplacementsStar{n})(i,1);
+			valuez=(*$CSDdisplacementsStar{n})(i,2);
+			FSI_RHS_vector.SetValue(&i, &valuex, &valuey, &valuez) ;
+		//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: RHS, i = " << i << ", valuex = " << valuex << ", valuey = " << valuey << ", valuez = " << valuez << ", CSDnodes.x = " << (*$CSDnodes_ic)(i,0) << ", CSDnodes.y = " << (*$CSDnodes_ic)(i,1) << ", CSDnodes.z = " << (*$CSDnodes_ic)(i,2) << endl ;
+		}
+
+		int tempTimeStepNumber = (*$ncycle{n}) ;
+	
+	//	if (rank==0) {
+//			std::stringstream filename ;	
+//			filename << "CSD2CFDRHS" << std::setfill('0') << std::setw(5) << tempTimeStepNumber << ".dat" ;
+//			ofstream CSD2CFDRHS ;
+//			CSD2CFDRHS.open(filename.str().c_str(), ios::out) ;
+////			CSD2CFDRHS << "CSDnodes.x" << ", " << "CSDnodes.y" << ", " << "CSDnodes.z" << ", " << "CSDdisp.x" << ", " << "CSDdisp.y" << ", " << "CSDdisp.z" << endl ;
+//			for(int i=0; i<Nb;++i) { // in CFD coordinates
+//				CSD2CFDRHS << (*$CSDnodes_ic)(i,0)  << ", " << (*$CSDnodes_ic)(i,1) << ", " << (*$CSDnodes_ic)(i,2) << ", " << (*$CSDdisplacementsStar{n})(i,0) << ", "  << (*$CSDdisplacementsStar{n})(i,1) << ", " << (*$CSDdisplacementsStar{n})(i,2)  << endl ;
+//			}
+//			CSD2CFDRHS.close();
+	//	}
+	
+		// Determine the number of non-zero row-values
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Determining non-zero row values" << endl ;
+		vector<int> numberOfNonZeros(Nbd1,0) ;
+		for(int i=0;i<Nb;++i) {
+			for(int j=0;j<Nb;++j) {
+				if (rbfNumber > 0 && rbfNumber < 9) {
+					distance = pow((*$CSDnodes_ic)(i,0) -(*$CSDnodes_ic)(j,0), 2.) ;
+					distance += pow((*$CSDnodes_ic)(i,1) - (*$CSDnodes_ic)(j,1), 2.) ;
+					distance += pow((*$CSDnodes_ic)(i,2) - (*$CSDnodes_ic)(j,2), 2.) ;
+					distance /= r * r ;
+					if (distance <= 1.) {
+						numberOfNonZeros[i]+=1;
+					}
+				} else {
+					numberOfNonZeros[i]+=1;
+				}
+			}
+		}
+		numberOfNonZeros[Nbd1-4]=Nb;
+		numberOfNonZeros[Nbd1-3]=Nb;
+		numberOfNonZeros[Nbd1-2]=Nb;
+		numberOfNonZeros[Nbd1-1]=Nb;
+	
+	
+		// Setup the system matrix A
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Setting up the system matrix" << endl ;
+	  PETSCCSD2CFDMatrix FSI_A_matrix ;
+		int temp=0;
+		FSI_A_matrix.Create(Nbd1, Nbd1, &numberOfNonZeros[0], &temp) ;
+		numberOfNonZeros.erase(numberOfNonZeros.begin(), numberOfNonZeros.end() ); // delete all elements of numberOfNonZeros
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: System matrix created.. Filling in the elements" << endl ;
+			
+		// Fill in the matrix A
+		for(int i=0;i<Nb;++i) {
+			for(int j=0;j<Nb;++j) {
+				distance = pow((*$CSDnodes_ic)(i,0) - (*$CSDnodes_ic)(j,0), 2.) ;
+				distance += pow((*$CSDnodes_ic)(i,1) - (*$CSDnodes_ic)(j,1), 2.) ;
+				distance += pow((*$CSDnodes_ic)(i,2) - (*$CSDnodes_ic)(j,2), 2.) ;
+				distance = sqrt(distance) ;
+				if ( !( (rbfNumber > 0 && rbfNumber < 9) && (distance/r > 1.)) ) {
+					valuex = radialBasisFunction(distance, r, a, rbfNumber) ;
+					columnIndex=j; //columnValue=valuex ;
+					FSI_A_matrix.SetRowValues(i,1,&columnIndex,&valuex);
+				}
+			}
+			for(int j=0; j<4; ++j) {
+				columnIndex=Nb+j; valuex=((j==0)?1.:(*$CSDnodes_ic)(i,j-1)); 
+				FSI_A_matrix.SetRowValues(i,1,&columnIndex,&valuex) ;
+				columnIndex=i;
+				FSI_A_matrix.SetRowValues(Nb+j,1,&columnIndex,&valuex) ;
+			}
+		}
+		if (rank==0) FSI_A_matrix.GetInfo() ;
+		FSI_A_matrix.AssemblyBegin() ; FSI_A_matrix.AssemblyEnd() ;
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Matrix Assembly done, solving" << endl ;
+		MatView((FSI_A_matrix).Data(), PETSC_VIEWER_STDOUT_WORLD);
+		
+		// Setup the KSP solver
+		PETSCCSD2CFDKsp FSI_ksp ;
+		FSI_ksp.Create() ;
+		FSI_ksp.SetTolerances(linearSolverTolerance,1.0e-30,linearSolverMaxIteration) ;
+		PC pc ; FSI_ksp.GetPC(&pc) ; PCSetType(pc,PCJACOBI) ;  PCSetFromOptions(pc) ;
+		//PC pc ; FSI_ksp.GetPC(&pc) ; PCSetType(pc,PCHYPRE) ; PCHYPRESetType(pc,"boomeramg") ; PCSetFromOptions(pc);
+		FSI_ksp.SetRestart(1000000) ;
+		FSI_ksp.SetInitialGuessNonzero() ;
+		FSI_ksp.SetFromOptions() ;
+	
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Solving the system" << endl ;
+		// Solve the system
+		FSI_phi.Create(Nbd1, Nbd1) ;
+		FSI_ksp.SetOperators(FSI_A_matrix) ; FSI_ksp.SolveVector(FSI_RHS_vector, FSI_phi) ;
+		
+	//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: system solved" << endl ;
+	
+		// Copy the solution to the local matrix
+		(*$CSDRBFweights{n}).resize(Nbd1, 3) ;
+		PetscScalar *phixCopy, *phiyCopy, *phizCopy ;
+		FSI_phi.GetArray(&phixCopy,&phiyCopy,&phizCopy) ;
+		for(int i=0;i<Nbd1;++i) {
+			(*$CSDRBFweights{n})(i,0) = phixCopy[i] ;
+			(*$CSDRBFweights{n})(i,1) = phiyCopy[i] ;
+			(*$CSDRBFweights{n})(i,2) = phizCopy[i] ;
+		}
+		FSI_ksp.GetConvergedReason() ;
+		int its = FSI_ksp.GetIterationNumber() ;
+		cout << "rank = " << rank << ", " << "CSD2CFD: solve -> number of iterations: " << its << endl ;
+		cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: Complete" << endl ;
+		//cout << "Displacement Interpolation CSD -> CFD: Complete, rank=" << rank << endl ;
+//		FSI_ksp.Destroy();
+//		FSI_phi.Destroy();
+//		FSI_A_matrix.Destroy();
+//		FSI_RHS_vector.Destroy() ;	
+} ;
+
+$type pos store<vect3d> ;
+$type node_s_b_flex store<vect3d> ;
+
+$rule pointwise(node_s_b_flex{n}<-pos,CSDnodes_ic,CSDYorigin,ncycle{n},CSD2dSpanCenter,CSDdimension,CSDRBFweights{n},FSICSD2CFDRBFr{n},FSICSD2CFDRBFa{n},FSICSD2CFDRBFnr{n}), 
+			constraint(gridMotionTimeDependent{n},FlexibleBoundaryDisplacement{n}),
+			option(disable_threading) {
+
+	//if ($CFDIterationFinished{n,it-1}) {
+
+		//int p = Loci::MPI_processes; 
+		int rank = Loci::MPI_rank ;
+		real distance=0. ;
+		real r=($FSICSD2CFDRBFr{n}), a=($FSICSD2CFDRBFa{n}) ;
+		int rbfNumber = ($FSICSD2CFDRBFnr{n}) ; // we get input as reals, convert to int
+		int d = 3;
+		int Nb = ($CSDnodes_ic).size1() ;
+		//int Nbd1 = Nb + d + 1;	
+		
+		real posy = ($CSDYorigin) ;
+		real posx = ($pos).x  ;
+		//real posy = ($pos).y  ;
+		real posz = (($CSDdimension==2)? ($CSD2dSpanCenter) : ($pos).z)  ;
+				
+		//cout << "Displacement Interpolation CSD -> CFD: Start applying, r=" << rank << endl ;
+		vector<real> value(Nb,0.);  
+		  for(int i=0;i<Nb;++i) {
+			  distance = pow(posx -  ($CSDnodes_ic)(i,0), 2.) ; // 
+			  distance += pow(posy - ($CSDnodes_ic)(i,1), 2.) ; // removing the y-component between the CFD and the CSD 
+			  distance += pow(posz - ($CSDnodes_ic)(i,2), 2.) ; // 
+			  distance = sqrt(distance) ;
+			  value[i] = radialBasisFunction(distance, r, a, rbfNumber) ;
+		  }
+			for(int di=0;di<d;++di) {
+				double polynom = ($CSDRBFweights{n})(Nb, di) ;
+				polynom += ($CSDRBFweights{n})(Nb+1,di) * posx ;
+				polynom += ($CSDRBFweights{n})(Nb+2,di) * posy ;				
+				polynom += ($CSDRBFweights{n})(Nb+3,di) * posz ;
+				if (di==0) {
+					($node_s_b_flex{n}).x = polynom ;
+				} else if (di==1) {
+					($node_s_b_flex{n}).y = polynom ;
+				} else if (di==2) {
+					($node_s_b_flex{n}).z = polynom ;
+				} else {
+					cout << "We shouldn't be here " << endl ;
+				}
+			}
+			
+			// RBF contribution
+			for(int i=0;i<Nb;++i){		
+				($node_s_b_flex{n}).x += ($CSDRBFweights{n})(i,0) * value[i] ;
+				($node_s_b_flex{n}).y += ($CSDRBFweights{n})(i,1) * value[i] ;
+				($node_s_b_flex{n}).z += ($CSDRBFweights{n})(i,2) * value[i] ;
+			}
+			value.erase(value.begin(), value.end()) ; 
+
+			int tempTimeStepNumber = ($ncycle{n}) ;
+			std::stringstream filename ;	
+//			filename << "CSD2CFDSOL" << std::setfill('0') << std::setw(5) << tempTimeStepNumber << ".dat" ;
+//			ofstream CSD2CFDRHS ;
+//			CSD2CFDRHS.open(filename.str().c_str(), ios::app) ;
+////			CSD2CFDRHS << "CSDnodes.x" << ", " << "CSDnodes.y" << ", " << "CSDnodes.z" << ", " << "CSDdisp.x" << ", " << "CSDdisp.y" << ", " << "CSDdisp.z" << endl ;
+////			for(int i=0; i<Nb;++i) { // in CFD coordinates
+//				CSD2CFDRHS << posx  << ", " << posy << ", " << posz << ", " << ($node_s_b_flex{n}).x << ", "  << ($node_s_b_flex{n}).y << ", " << ($node_s_b_flex{n}).z  << endl ;
+////			}
+//			CSD2CFDRHS.close();
+
+	//		cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: x,y,z=" << $pos.x << ", " << $pos.y << ", " << $pos.z << ", node_s_b_flex = " << ($node_s_b_flex{n}).x << ", " << ($node_s_b_flex{n}).y << ", " << ($node_s_b_flex{n}).z << ", " << endl ;
+	//		cout << "CSD2CFD: Displacement Interpolation CSD -> CFD: r,x,y,z=" << rank << ", " << $pos.x << ", " << $pos.y << ", " << $pos.z << ", node_s_b_flex = " << ($node_s_b_flex{n}).x << ", " << ($node_s_b_flex{n}).y << ", " << ($node_s_b_flex{n}).z << ", " << endl ;
+	//		cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: End applying" << endl ;
+	//	} else {
+	//		($node_s_b_flex{n}) = vect3d(0.0, 0.0, 0.0) ;
+	//	}
+	} 
+}
+
+
+
+
+

@@ -1,0 +1,839 @@
+//-----------------------------------------------------------------------------
+// Description: This file contains some of the basic rules common to all
+//   grid movement schemes.
+//-----------------------------------------------------------------------------
+
+// Standard library includes.
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <cstdlib> // for exit function
+#include <string>
+#include <sstream>
+#include <cmath>
+#include <vector>
+using std::vector ;
+
+using namespace std ;
+
+// Loci includes.
+#include <Loci.h>
+
+// StreamUns includes.
+#include "sciTypes.h"
+
+#define BOOST_DISABLE_ASSERTS // assertion disabled                                      
+// boost::ublas includes
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/io.hpp>
+#include <boost/multi_array.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+
+namespace ublas = boost::numeric::ublas ;
+
+// Including the C-Fortran template for the subroutine call to NLAMS	
+	extern "C"{
+        void pass_(const int *, const int*, const int*, const double*, const double*, const double*,
+		   const int*, const int*,
+                   const int*, const int*, const double*,
+                   const double*,  const double*,  const double*,  const double*,
+                   const int*,  const double*,  const double*,  const double*, 
+                   const int*, const double*, const double*, const double*,
+                   const double*, const double*, const double*, 
+                   const double*, const int*,  const int*,
+                   const int*, const int*,
+                   const double*, const double*, const double*, const double*,
+                   const double*, const double*, const double*, 
+                   double*,double*,double*,double*,double*);
+   
+      	void beam1d_(const int *, const int*, const int*, const double*, const double*, const double*, const double*, const double*, const double*, const double*,
+        const double*, const double*, const double*, const double*, const double*, const double*, const double*, const int*, 
+        double*, double*, double*, double*) ;
+        
+	}
+
+// Forward declarations using C linkage to avoid mangling the names of
+// the Fortran functions that will be called.
+// Idea I: Store the data in LOCI which will be required in CSD solver
+// Idea II: Excute CSD solver at each step and kill it after get solution.
+// 			Only at t=0: readin the mesh, connectivity, bcs, etc.
+// Idea III: for constant time, i.e. n=constant, but for advancing inner iteration, i.e. it=changing, we want to keep the unsteady term (CSD) constant.
+
+// CSDvariables
+$include "FSI_CSDvariables.lh"
+
+namespace streamUns {
+            
+//-----------------------------------------------------------------------------
+// Rules to read in the grids
+
+// -- Read in the nodes, connectivity, bc files for CSD------------------------------------------------------------------------------------- 
+// Read in the initial CSD nodes: undeformed
+
+$type CFDIterationFinished param<bool> ;
+$type FSIIterationFinished param<bool> ;
+
+
+$rule blackbox(CSDnodes_ic<-CSDMeshFilename),constraint(FSICoupling,FSINLAMS),option(disable_threading),
+ prelude { 
+ 	string filename = *$CSDMeshFilename ;
+ 	int Nb = 0;
+	if (Loci::MPI_rank==0) cout << "[I] Reading the CSD mesh" << endl;
+	ifstream meshData ;
+	meshData.open(filename.c_str(), ios::in) ;
+	if (!meshData.is_open()) {
+		if (Loci::MPI_rank==0) cerr << "[E] CSD meshfile file " << Nb  << " couldn't be opened" << endl;
+		exit(1);
+	}
+	cout << "[I] ..." << filename << " is successfully opened " << endl;
+	
+	// initialization
+	int counter = 0;
+	int tempInt ;
+//	vector<double> tempVector(3) ;
+
+	string dumpLine ;
+// Count the number of elements
+	while (getline(meshData, dumpLine)) 
+	{
+		counter++;
+	}
+	
+	Nb = counter ;
+	
+// Resize the CSD nodes
+	(*$CSDnodes_ic).resize(Nb,3) ;
+	
+// Clear the stream and go to the first line
+	meshData.clear() ;
+	meshData.seekg(0) ;
+	
+// Create nodes by reading the mesh until EOF found
+	for (int i=0; i<Nb; ++i) {
+		meshData >> tempInt >> (*$CSDnodes_ic)(i,2) >> (*$CSDnodes_ic)(i,0)>> (*$CSDnodes_ic)(i,1); // data CSD coordinates
+	}
+	
+	if (Loci::MPI_rank==0) cout << "[I] ...Number of CSD nodes: " << Nb << endl;
+
+	meshData.close();
+} ;
+
+// Read in the CSD connectivity
+$rule blackbox(CSDConnectivity<-CSDConnectivityFilename),constraint(FSICoupling,FSINLAMS),option(disable_threading),
+ prelude { 
+	string filename = *$CSDConnectivityFilename ;
+	int Ne=0;
+	
+	//Open file 
+	if (Loci::MPI_rank==0) cout << "[I] Reading the CSD connectivity" << endl;
+	ifstream connectData ;
+	connectData.open(filename.c_str(), ios::in) ;
+	if (!connectData.is_open()) {
+		if (Loci::MPI_rank==0) cerr << "[E] CSD connectivity file " << filename  << " couldn't be opened" << endl;
+		exit(1);
+	}
+	cout << "[I] ..." << filename << " is successfully opened " << endl;
+	
+	// initialization
+	int counter = 0;
+	int tempInt ;
+//	vector<int> tempVector(3) ;
+
+	string dumpLine ;
+// Count the number of elements
+	while (getline(connectData, dumpLine)) counter++ ;
+	
+	Ne = counter ;
+	
+// Resize the CSD nodes
+	(*$CSDConnectivity).resize(Ne,3) ;
+	
+// Clear the stream and go to the first line
+	connectData.clear() ;
+	connectData.seekg(0) ;
+	
+// Create nodes by reading the mesh until EOF found
+	for (int i=0; i<Ne; ++i) {
+		connectData >> tempInt >> tempInt >> (*$CSDConnectivity)(i,0) >> (*$CSDConnectivity)(i,1) >> (*$CSDConnectivity)(i,2) ;
+	}
+		
+	if (Loci::MPI_rank==0) cout << "[I] ...Number of CSD elements: " << Ne << endl;
+
+	connectData.close();
+}	;
+
+
+// Read in the CSD BCs
+$rule singleton(CSDBCdof,CSDBCZeroConstraint<-CSDBCFilename),constraint(FSICoupling,FSINLAMS),option(disable_threading) { 
+
+	string filename = $CSDBCFilename ;
+	int Nbc=0;
+	//Open file 
+	if (Loci::MPI_rank==0) cout << "[I] Reading the CSD boundary conditions" << endl;
+	ifstream bcData ;
+	bcData.open(filename.c_str(), ios::in) ;
+	if (!bcData.is_open()) {
+		if (Loci::MPI_rank==0) cerr << "[E] CSD connectivity file " << filename  << " couldn't be opened" << endl;
+		exit(1);
+	}
+	cout << "[I] ..." << filename << " is successfully opened " << endl;
+	
+	// initialization
+	int counter = 0 ;
+	int tempInt ;
+	real tempReal ;
+
+	string dumpLine ;
+// Count the number of elements
+	while (getline(bcData, dumpLine)) 
+	{
+		counter++;
+	}
+	
+	Nbc = counter ;
+	
+// Resize the CSD nodes
+	($CSDBCdof).resize(Nbc) ;
+	($CSDBCZeroConstraint).resize(Nbc) ;
+	
+// Clear the stream and go to the first line
+	bcData.clear() ;
+	bcData.seekg(0) ;
+	
+// Create nodes by reading the mesh until EOF found
+	for (int i=0; i<Nbc; ++i) {
+	bcData >> tempInt >> tempReal ;
+	($CSDBCdof)[i] = tempInt ;
+	($CSDBCZeroConstraint)[i] = tempReal ;
+	}
+		
+	if (Loci::MPI_rank==0) cout << "[I] ...Number of CSD bcs: " << Nbc<< endl;
+
+	bcData.close();
+}
+
+// -- Time advancing for the CSDnodes ----------------------------------------------------------------------------------------------------
+// Time Build rule for the CSD nodes
+$rule blackbox(CSDnodes{n=0}<-CSDnodes_ic),constraint(FSICoupling),option(disable_threading),
+	prelude { 
+	(*$CSDnodes{n=0}).resize((*$CSDnodes_ic).size1(),3) ; std::fill( (*$CSDnodes{n=0}).data().begin(), (*$CSDnodes{n=0}).data().end(), 0. );  
+	(*$CSDnodes{n=0}) = (*$CSDnodes_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodes, note CSDnodes{n,it} is the updated one, see move.cc
+$rule blackbox(CSDnodes{n+1}<-CSDnodes_ic,CSDdisplacementsStar{n}),constraint(FSICoupling),option(disable_threading),
+	prelude { 	
+	(*$CSDnodes{n+1}).resize((*$CSDnodes_ic).size1(),3) ; std::fill( (*$CSDnodes{n+1}).data().begin(), (*$CSDnodes{n+1}).data().end(), 0. ); 
+			
+	(*$CSDnodes{n+1}) = (*$CSDnodes_ic) + (*$CSDdisplacementsStar{n}); // CHECK!!!!
+	//	if (Loci::MPI_rank==0) cout << "Inside CSDnodes_it{n,it+1} priority out" << endl ;	
+} ;
+
+// -- Time advancing for the CSD nodal generalized displacements  ------------------------------------------------------------------------------------------------
+// Initialization rule for the CSDaccelerations
+$rule blackbox(CSDnodesDisp_ic<-CSDnodes_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading),	prelude { 
+	(*$CSDnodesDisp_ic).resize(6*(*$CSDnodes_ic).size1(),1) ;
+	std::fill( (*$CSDnodesDisp_ic).data().begin(),(*$CSDnodesDisp_ic).data().end(), 0. ); 
+} ;
+
+// Time Build rule for the CSD nodal generalized displacements
+$rule blackbox(CSDnodesDisp{n=0}<-CSDnodesDisp_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude { 
+	(*$CSDnodesDisp{n=0}).resize((*$CSDnodesDisp_ic).size1(),1) ; std::fill( (*$CSDnodesDisp{n=0}).data().begin(),(*$CSDnodesDisp{n=0}).data().end(), 0. ); 
+	(*$CSDnodesDisp{n=0}) = (*$CSDnodesDisp_ic) ;
+} ;
+
+
+// Iteration Advance rule for the CSD nodal generalized displacements from NLAMS
+$rule blackbox(CSDnodesDisp{n+1}<-CSDnodesDisp{n},CSDnodesDispStar{n}),constraint(FSICoupling,FSINLAMS),conditional(iterationFinished{n,it-1}),option(disable_threading), prelude { 
+	(*$CSDnodesDisp{n+1}).resize((*$CSDnodesDispStar{n}).size1(),1) ;	std::fill( (*$CSDnodesDisp{n+1}).data().begin(),(*$CSDnodesDisp{n+1}).data().end(), 0. );
+	(*$CSDnodesDisp{n+1}) = (*$CSDnodesDispStar{n}) ;	
+} ;
+
+// -- Time advancing for the CSD nodal velocities ----------------------------------------------------------------------------------------------------
+// Initialization rule for the CSDdisplacements
+$rule blackbox(CSDnodesVel_ic<-CSDnodes_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude { 
+	(*$CSDnodesVel_ic).resize(6*(*$CSDnodes_ic).size1(),1) ; std::fill( (*$CSDnodesVel_ic).data().begin(),(*$CSDnodesVel_ic).data().end(), 0. );
+	(*$CSDnodesVel_ic).clear() ; // Set all elements to zero
+} ;
+
+// Time Build rule for the CSD nodal velocities
+$rule blackbox(CSDnodesVel{n=0}<-CSDnodesVel_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude { 
+	(*$CSDnodesVel{n=0}).resize((*$CSDnodesVel_ic).size1(),1) ; std::fill( (*$CSDnodesVel{n=0}).data().begin(),(*$CSDnodesVel{n=0}).data().end(), 0. );
+	(*$CSDnodesVel{n=0}) = (*$CSDnodesVel_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodal velocities from NLAMS
+$rule blackbox(CSDnodesVel{n+1}<-CSDnodesVel{n},CSDnodesVelStar{n}),constraint(FSICoupling,FSINLAMS),conditional(iterationFinished{n,it-1}),option(disable_threading), prelude { 
+	(*$CSDnodesVel{n+1}).resize((*$CSDnodesVelStar{n}).size1(),1) ; std::fill( (*$CSDnodesVel{n+1}).data().begin(),(*$CSDnodesVel{n+1}).data().end(), 0. );
+	(*$CSDnodesVel{n+1}) = (*$CSDnodesVelStar{n}) ;	
+} ;
+
+// -- Time advancing for the CSD nodal accelerations ----------------------------------------------------------------------------------------------------
+// Initialization rule for the CSDaccelerations
+$rule blackbox(CSDnodesAcc_ic<-CSDnodes_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading),	prelude { 
+	(*$CSDnodesAcc_ic).resize(6*(*$CSDnodes_ic).size1(),1) ; std::fill( (*$CSDnodesAcc_ic).data().begin(),(*$CSDnodesAcc_ic).data().end(), 0. );
+	(*$CSDnodesAcc_ic).clear() ;
+} ;
+
+// Time Build rule for the CSD nodal accelerations
+$rule blackbox(CSDnodesAcc{n=0}<-CSDnodesAcc_ic),constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude { 
+	(*$CSDnodesAcc{n=0}).resize((*$CSDnodesAcc_ic).size1(),1) ;std::fill( (*$CSDnodesAcc{n=0}).data().begin(),(*$CSDnodesAcc{n=0}).data().end(), 0. );
+	(*$CSDnodesAcc{n=0}) = (*$CSDnodesAcc_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodal accelerations from NLAMS
+$rule blackbox(CSDnodesAcc{n+1}<-CSDnodesAcc{n},CSDnodesAccStar{n}),constraint(FSICoupling,FSINLAMS),conditional(iterationFinished{n,it-1}),option(disable_threading), prelude { 
+	(*$CSDnodesAcc{n+1}).resize((*$CSDnodesAccStar{n}).size1(),1) ;std::fill( (*$CSDnodesAcc{n+1}).data().begin(),(*$CSDnodesAcc{n+1}).data().end(), 0. );
+	(*$CSDnodesAcc{n+1}) = (*$CSDnodesAccStar{n}) ;	
+} ;
+
+// -- Time advancing for the CFD2CSD Force Pre----------------------------------------------------------------------------------------------------
+// Initialization rule for the CFD2CSD Force Pre
+$rule blackbox(CSDForcePre_ic<-CSDnodes_ic),constraint(FSICoupling),option(disable_threading),	prelude { 
+	(*$CSDForcePre_ic).resize(6*(*$CSDnodes_ic).size1(),1) ; std::fill( (*$CSDForcePre_ic).data().begin(),(*$CSDForcePre_ic).data().end(), 0. );
+	(*$CSDForcePre_ic).clear();
+} ;
+
+// Time Build rule for the CFD2CSD Force Pre
+$rule blackbox(CSDForcePre{n=0}<-CSDForcePre_ic),constraint(FSICoupling),option(disable_threading), prelude { 
+	(*$CSDForcePre{n=0}).resize((*$CSDForcePre_ic).size1(),1) ;std::fill((*$CSDForcePre{n=0}).data().begin(),(*$CSDForcePre{n=0}).data().end(), 0. );
+	(*$CSDForcePre{n=0}) = (*$CSDForcePre_ic) ;
+} ;
+
+// Iteration Advance rule for the CFD2CSD Force Pre from NLAMS
+$rule blackbox(CSDForcePre{n+1}<-CSDForcePre{n},CSDForcePreStar{n}),constraint(FSICoupling),conditional(iterationFinished{n,it-1}),option(disable_threading), prelude { 
+	(*$CSDForcePre{n+1}).resize((*$CSDForcePreStar{n}).size1(),1) ;std::fill( (*$CSDForcePre{n+1}).data().begin(),(*$CSDForcePre{n+1}).data().end(), 0. );
+	(*$CSDForcePre{n+1}) = (*$CSDForcePreStar{n}) ;
+	
+} ;
+
+// -- Time advancing for the CSD nodal system coordinates ----------------------------------------------------------------------------------------------------
+// Initialization rule for the CSD nodal system coordinates
+$rule blackbox(CSDnodesSys_ic<-CSDConnectivity),constraint(FSICoupling,FSINLAMS),option(disable_threading),	prelude { 
+	 size_t numEl = (*$CSDConnectivity).size1() ;
+	// if (Loci::MPI_rank==0) cout << "ic: numEL=" << numEl << endl;
+	 (*$CSDnodesSys_ic).resize(boost::extents[3][3][numEl][3]);
+	 //(*$CSDnodesSys_ic).resize(boost::extents[3][3][3][3]);
+	 std::fill( (*$CSDnodesSys_ic).origin(), (*$CSDnodesSys_ic).origin() + (*$CSDnodesSys_ic).size(), 0. ); // initialize with zero
+	 	} ;
+
+// Time Build rule for the CSD nodal system coordinates
+$rule blackbox(CSDnodesSys{n=0}<-CSDnodesSys_ic,CSDConnectivity),constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude { 
+	size_t numEl = (*$CSDConnectivity).size1() ;
+	//if (Loci::MPI_rank==0) cout << "{n=0} numEL=" << numEl << endl;
+	//(*$CSDnodesSys{n=0}).resize(boost::extents[0][0][0][0]) ;
+	(*$CSDnodesSys{n=0}).resize(boost::extents[3][3][numEl][3]) ;  std::fill( (*$CSDnodesSys{n=0}).origin(), (*$CSDnodesSys{n=0}).origin() + (*$CSDnodesSys{n=0}).size(), 0. );
+	(*$CSDnodesSys{n=0}) = (*$CSDnodesSys_ic) ;
+	// std::fill( (*$CSDnodesSys{n=0}).origin(), (*$CSDnodesSys{n=0}).origin() + (*$CSDnodesSys{n=0}).size(), 0. ); // initialize with zero
+} ;
+
+// Iteration Advance rule for the CSD nodal system coordinates from NLAMS
+$rule blackbox(CSDnodesSys{n+1}<-CSDnodesSys{n},CSDnodesSysStar{n}),constraint(FSICoupling,FSINLAMS),conditional(iterationFinished{n,it-1}),option(disable_threading), prelude { 
+	size_t numEl = (*$CSDnodesSysStar{n}).shape()[2] ;
+//	if (Loci::MPI_rank==0) cout << "Star{n,it} numEL=" << numEl << endl;
+	(*$CSDnodesSys{n+1}).resize(boost::extents[3][3][numEl][3]) ; std::fill( (*$CSDnodesSys{n+1}).origin(), (*$CSDnodesSys{n+1}).origin() + (*$CSDnodesSys{n+1}).size(), 0. );
+	(*$CSDnodesSys{n+1}) = (*$CSDnodesSysStar{n}) ;		
+} ;
+
+// -- Communication with NLAMS -----------------------------------------------------------------------------------------------------
+
+$type CFDIterationFinished param<bool> ;
+$type stime param<real> ;
+$type ncycle param<int> ;
+
+$rule singleton(stime{n,it=0}<-stime{n}) {	
+//	if (Loci::MPI_rank==0) cout << "inside stime{n,it=0} in" << endl ; 
+	$stime{n,it=0}=$stime{n} ;
+//	if (Loci::MPI_rank==0) cout << "inside stime{n,it=0} out" << endl ; 
+}	 
+
+$rule singleton(stime{n,it+1}<-stime{n,it}) {
+	$stime{n,it+1}=$stime{n,it} ;
+}	 
+
+$rule singleton(ncycle{n,it=0}<-ncycle{n}) {	
+//	if (Loci::MPI_rank==0) cout << "inside ncycle{n,it=0} in" << endl ; 
+	$ncycle{n,it=0}=$ncycle{n} ;
+//	if (Loci::MPI_rank==0) cout << "inside ncycle{n,it=0} out" << endl ; 
+}	 
+
+$rule singleton(ncycle{n,it+1}<-ncycle{n,it}) {
+	$ncycle{n,it+1}=$ncycle{n,it} ;
+}	 
+
+//$rule singleton(stime{n+1}<-stime{n,it}),conditional(iterationFinished{n,it-1}) {
+//	$stime{n+1}=$stime{n,it} ;
+//}	 
+
+$type timeStep param<real> ;
+//$rule blackbox(CSDdisplacementsStar{n,it},CSDnodesDispStar,CSDnodesVelStar,CSDnodesAccStar,CSDForcePreStar,CSDnodesSysStar<-
+//							CSDnodes_ic,CSDnodes,CSDnodesDisp,CSDnodesVel,CSDnodesAcc,CSDForce,CSDForcePre,CSDConnectivity,CSDBCdof,CSDBCZeroConstraint,CSDnodesSys,
+//							stime,ncycle,timeStep,CSDstartingTimeStep,
+//							CSDE1,CSDE2,CSDnu12,CSDnu21,CSDG12,CSDthicknessStructure,CSDrhoStructure,
+//							CSDintegrationScheme,CSDdelta,CSDswitchStiffening,CSDgenAlphaCoeff,CSDnewmarkGammaCoeff,CSDnewmarkBetaCoeff,CSDdampingCoeff1,CSDdampingCoeff2,
+//							CSDexcitationType,CSDflappingType,CSDplungingType,
+//							CSDfrequency,CSDplungeAmplitudeX,CSDplungeAmplitudeY,CSDplungeAmplitudeZ,CSDflappingAmplitudeX,CSDflappingAmplitudeY,CSDflappingAmplitudeZ,
+//							CFDIterationFinished{n,it-1}),
+//						constraint(FSICoupling,FSINLAMS),option(disable_threading), prelude {
+$rule blackbox(CSDdisplacementsStar{n},CSDnodesDispStar{n},CSDnodesVelStar{n},CSDnodesAccStar{n},CSDForcePreStar{n},CSDnodesSysStar{n}<-
+							CSDnodes_ic,CSDnodes{n},CSDnodesDisp{n},CSDnodesVel{n},CSDnodesAcc{n},CSDForce{n},CSDForcePre{n},CSDConnectivity,CSDBCdof,CSDBCZeroConstraint,CSDnodesSys{n},
+							stime{n},ncycle{n},timeStep{n},CSDstartingTimeStep,CSDtipNode,
+							CSDE1{n},CSDE2{n},CSDnu12{n},CSDnu21{n},CSDG12{n},CSDthicknessStructure{n},CSDrhoStructure{n},
+							CSDintegrationScheme{n},CSDdelta{n},CSDswitchStiffening{n},CSDgenAlphaCoeff{n},CSDnewmarkGammaCoeff{n},CSDnewmarkBetaCoeff{n},CSDdampingCoeff1{n},CSDdampingCoeff2{n},
+							CSDflappingType{n},CSDplungingType{n},
+							CSDfrequency{n},CSDplungeAmplitudeX{n},CSDplungeAmplitudeY{n},CSDplungeAmplitudeZ{n},CSDflappingAmplitudeX{n},CSDflappingAmplitudeY{n},CSDflappingAmplitudeZ{n},
+							itfsi{n},CSDdimension),
+						constraint(FSICoupling{n},FSINLAMS{n}),option(disable_threading), prelude {
+	// call NLAMS
+	//communicateWithNLAMS(*CSDdisplacementsStar, ....) ;
+	//if (*$CFDIterationFinished) {
+	
+	const int rank = Loci::MPI_rank ;
+	const int CSDNumNodes = (*$CSDnodes_ic).size1() ;
+	const int CSDNumElems = (*$CSDConnectivity).size1() ;
+	const int CSDNumBC = (*$CSDBCdof).size() ;
+	const int CSDAnswerSize = 6 * CSDNumNodes ;
+		
+	// Initialize
+	(*$CSDdisplacementsStar{n}).resize(CSDNumNodes,3) ; std::fill( (*$CSDdisplacementsStar{n}).data().begin(),(*$CSDdisplacementsStar{n}).data().end(), 0. );
+//	(*$CSDdisplacementsOldStar).resize(CSDNumNodes,3) ; (*$CSDdisplacementsOldStar).clear();
+	(*$CSDnodesDispStar{n}).resize(CSDAnswerSize,1) ; std::fill( (*$CSDnodesDispStar{n}).data().begin(),(*$CSDnodesDispStar{n}).data().end(), 0. );
+	(*$CSDnodesVelStar{n}).resize(CSDAnswerSize,1) ; std::fill( (*$CSDnodesVelStar{n}).data().begin(),(*$CSDnodesVelStar{n}).data().end(), 0. );
+	(*$CSDnodesAccStar{n}).resize(CSDAnswerSize,1) ; std::fill( (*$CSDnodesAccStar{n}).data().begin(),(*$CSDnodesAccStar{n}).data().end(), 0. );
+	(*$CSDForcePreStar{n}).resize(CSDAnswerSize,1) ; std::fill( (*$CSDForcePreStar{n}).data().begin(),(*$CSDForcePreStar{n}).data().end(), 0. );
+	(*$CSDnodesSysStar{n}).resize(boost::extents[3][3][CSDNumElems][3]); std::fill( (*$CSDnodesSysStar{n}).origin(), (*$CSDnodesSysStar{n}).origin() + (*$CSDnodesSysStar{n}).size(), 0. );
+		
+	
+//	if (*$CFDIterationFinished{n,it-1}) {	
+		
+	if (*$ncycle{n} < *$CSDstartingTimeStep) {
+		 if (rank==0) cout << "CSDstartingTime not yet reached. Current time step = " << *$ncycle{n} << ", CSDstartingTimeStep = " << *$CSDstartingTimeStep << endl ;
+	} else {
+		
+	
+	int tempTimeStepNumber = *$ncycle{n} - *$CSDstartingTimeStep + 1 ;	
+		
+	if (rank==0) cout << "[I] Communicating with NLAMS.. " << endl ;
+	if (rank==0) cout << "[I]... CSDNumNodes = " << CSDNumNodes << endl ;	
+	if (rank==0) cout << "[I]... CSDNumElems = " << CSDNumElems << endl ;	
+	if (rank==0) cout << "[I]... CSDNumBC = " << CSDNumBC << endl ;	
+	if (rank==0) cout << "[I]... stime = " << *$stime{n} << endl ;	
+	if (rank==0) cout << "[I]... current time step number [c++] = " << *$ncycle{n} << endl ;	
+	if (rank==0) cout << "[I]... timestep = " << *$timeStep{n} << endl ;	
+	if (rank==0) cout << "[I]... tip node = " << *$CSDtipNode << ": " << (*$CSDnodes{n})(*$CSDtipNode,0) << ", "  << (*$CSDnodes{n})(*$CSDtipNode,1) << ", "<< (*$CSDnodes{n})(*$CSDtipNode,2) << endl ;	
+	if (rank==0) cout << "[I]... CSDE1 = " << *$CSDE1{n} << endl ;					
+	if (rank==0) cout << "[I]... CSDE2 = " << *$CSDE2{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDnu12 = " << *$CSDnu12{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDnu21 = " << *$CSDnu21{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDG12 = " << *$CSDG12{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDthicknessStructure = " << *$CSDthicknessStructure{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDrhoStructure = " << *$CSDrhoStructure{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDdelta = " << *$CSDdelta{n} << endl ;		
+	//if (rank==0) cout << "[I]... CSDexcitationType = " << *$CSDexcitationType{n} << endl ;		
+	if (rank==0) cout << "[I]... CSDfrequency = " << *$CSDfrequency{n} << endl ;		
+
+	if (rank==0) {
+		std::stringstream filename ;	
+		filename << "CSDnodesforces" << tempTimeStepNumber << "it" << *$itfsi{n} << ".dat" ;
+		ofstream CSDnodesforces ;
+		CSDnodesforces.open(filename.str().c_str(), ios::out) ;
+			CSDnodesforces << "CSDnodes.x" << ", " << "CSDnodes.y" << ", " << "CSDnodes.z" << ", " << "CSDForce.x" << ", "  << "CSDForce.y" << ", " << "CSDForce.z" << "CSDdisp.x" << ", " << "CSDdisp.y" << ", " << "CSDdisp.z" << endl ;
+		for(int i=0; i<CSDNumNodes;++i) { // in CFD coordinates
+			CSDnodesforces << (*$CSDnodes{n})(i,0) << ", " << (*$CSDnodes{n})(i,1) << ", " << (*$CSDnodes{n})(i,2) << ", " << (*$CSDForce{n})(i*6+0,0) << ", "  << (*$CSDForce{n})(i*6+1,0) << ", " << (*$CSDForce{n})(i*6+2,0)  << (*$CSDnodes{n})(i,0) - (*$CSDnodes_ic)(i,0)<< ", " << (*$CSDnodes{n})(i,1) - (*$CSDnodes_ic)(i,1) << ", " << (*$CSDnodes{n})(i,2) - (*$CSDnodes_ic)(i,2) << endl ;
+		}
+		CSDnodesforces.close();
+	}
+	
+	// Displacements at the previous itfis
+	//(CSDdisplacementsOld) = (*$CSDnodes) - (*$CSDnodes_ic) ;
+	
+//	if (rank==0) cout << "connectivity matrix in loci-stream: " << (*$CSDConnectivity) << endl ;
+
+//	if (rank==0) cout << "force matrix in loci-stream: " << (*$CSDForce) << endl ;
+
+  int itfsiInt = 0;
+
+      for(int i=0; i<CSDNumNodes; ++i) {
+		 if (rank==0) cout << "displacementsStarBefore: " << (*$CSDdisplacementsStar{n})(i,0) << endl ;
+  		 if (rank==0) cout << "displacementsStarBefore: " << (*$CSDdisplacementsStar{n})(i,1) << endl ;
+		 if (rank==0) cout << "displacementsStarBefore: " << (*$CSDdisplacementsStar{n})(i,2) << endl ;
+  	}		
+	
+  pass_(&rank, &itfsiInt, &CSDNumNodes, &(*$CSDnodes_ic)(0,0), &(*$CSDnodes_ic)(0,1),&(*$CSDnodes_ic)(0,2), 
+  			&CSDNumElems, &(*$CSDConnectivity)(0,0), 
+  			&CSDNumBC, &(*$CSDBCdof)[0], &(*$CSDBCZeroConstraint)[0], 
+  			&(*$CSDE1{n}), &(*$CSDnu12{n}), &(*$CSDrhoStructure{n}), &(*$CSDthicknessStructure{n}), 
+  			&(*$CSDintegrationScheme{n}), &(*$CSDnewmarkBetaCoeff{n}), &(*$CSDnewmarkGammaCoeff{n}), &(*$CSDgenAlphaCoeff{n}), 
+  			&CSDAnswerSize, &(*$CSDnodesDisp{n})(0,0), &(*$CSDnodesVel{n})(0,0), &(*$CSDnodesAcc{n})(0,0), &(*$CSDForce{n})(0,0), &(*$CSDForcePre{n})(0,0), (*$CSDnodesSys{n}).data(),
+  			&(*$timeStep{n}), &tempTimeStepNumber, &(*$CSDtipNode), // &(*$ncycle), 
+  			&(*$CSDflappingType{n}), &(*$CSDplungingType{n}), 
+  			&(*$CSDfrequency{n}), &(*$CSDflappingAmplitudeX{n}), &(*$CSDflappingAmplitudeY{n}), &(*$CSDflappingAmplitudeZ{n}), &(*$CSDplungeAmplitudeX{n}), &(*$CSDplungeAmplitudeY{n}), &(*$CSDplungeAmplitudeZ{n}), 
+  			&(*$CSDdisplacementsStar{n})(0,0), &(*$CSDnodesDispStar{n})(0,0), &(*$CSDnodesVelStar{n})(0,0), &(*$CSDnodesAccStar{n})(0,0), (*$CSDnodesSysStar{n}).data() );
+  
+  if (rank==0) cout << "[I] Communication with NLAMS finished.. " << endl ;
+  
+  // Updates
+  // CSDForce -> CSDForcePre
+  (*$CSDForcePreStar{n}) = (*$CSDForce{n} ) ;
+  
+  if (*$CSDdimension == 2) { // displacement from NLAMS is sometimes not exactly zero due to floating point errors
+  	for(int i=0; i<CSDNumNodes; ++i) {
+  		 (*$CSDdisplacementsStar{n})(i,2) = 0. ;
+  	}
+  }
+  //-----------
+  for(int i=0; i<CSDNumNodes; ++i) {
+//	  (*$CSDdisplacementsStar{n})(i,0) = 0.0 ;
+//	  (*$CSDdisplacementsStar{n})(i,1) = 0.0 ;
+	  (*$CSDdisplacementsStar{n})(i,2) = 0.0 ;
+	}
+  //-----------
+  
+  			
+	for (int i=0; i<3; ++i) {
+		for (int n=0; n<CSDNumNodes; ++n) {
+			if ( fabs((*$CSDdisplacementsStar{n})(n,i))  < 1.0e-5 ) (*$CSDdisplacementsStar{n})(n,i) = 0.0 ;
+		}
+	}
+  
+  
+    for(int i=0; i<CSDNumNodes; ++i) {
+		 if (rank==0) cout << "displacementsStar: " << (*$CSDdisplacementsStar{n})(i,0) << endl ;
+  		 if (rank==0) cout << "displacementsStar: " << (*$CSDdisplacementsStar{n})(i,1) << endl ;
+		 if (rank==0) cout << "displacementsStar: " << (*$CSDdisplacementsStar{n})(i,2) << endl ;
+  	}		
+//  
+//		const double PI = 4.0*atan(1.0) ;	
+//  		real alpha_amp = 5.0 ; 
+//		//real freq = *$CSDfrequency ; // period in sec
+//  		//real alpha = alpha_amp * sin(2.*PI * freq * (*$stime{n})) ;  		
+//		real tT = (*$ncycle{n}) / 500.0 ;
+//		real alpha = alpha_amp * sin( 2.0 * PI * tT );
+//
+//  		for(int i=0;i<CSDNumNodes;++i) {
+//		 	  (*$CSDdisplacementsStar{n})(i,0) = (*$CSDnodes_ic)(i,0) * ( cos(alpha*PI/180) - 1.) ;
+//		 	  (*$CSDdisplacementsStar{n})(i,1) = (*$CSDnodes_ic)(i,0) * ( sin(alpha*PI/180) ) ;
+//		 	  (*$CSDdisplacementsStar{n})(i,2) = 0.0 ;
+//		  }
+//	   	if (Loci::MPI_rank==0) cout << "CSDdisplacement:" << (*$stime{n}) << ", alpha = " << alpha << endl ;
+
+  
+ // (*$CSDdisplacementsOldStar) = (*$CSDForce ) ;
+  
+  
+  
+ } // end if CSDstartingTimeStep
+ 
+//}
+
+} ; 
+
+  
+$rule singleton(CSDEulerBeamDirection,CSDEulerSpanDirection<-CSDEulerAxis),constraint(FSICoupling,FSIEULERBEAM) {
+	$CSDEulerBeamDirection = $CSDEulerAxis ;
+	$CSDEulerSpanDirection = 3 - ($CSDEulerAxis + 1) ; // 3 % 1 [x] = 2 [z], 3 % 3 [z] = 0 [x]
+//	if (rank==0) cout << "[I] Euler-Bernoulli.. $CSDEulerBeamDirection: " << $CSDEulerBeamDirection << ", $CSDEulerSpanDirection" << $CSDEulerSpanDirection << endl ;
+}
+   
+$rule blackbox(CSDnodes_ic<-CSDEulerXstart,CSDEulerXend,CSDEulerXnum,CSD2dSpanCenter,CSDdimension,CSDEulerBeamDirection,CSDEulerSpanDirection),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude {
+	int nElements = *$CSDEulerXnum - 1;
+	real dx = (*$CSDEulerXend - *$CSDEulerXstart) / nElements ;
+
+	real posz =0.0;
+	posz = ((*$CSDdimension==2)? (*$CSD2dSpanCenter) : 0.0 ) ;
+
+	int beamdirection = (*$CSDEulerBeamDirection) ;
+	int spandirection = (*$CSDEulerSpanDirection) ;
+	
+	
+	(*$CSDnodes_ic).resize(*$CSDEulerXnum,3) ; std::fill( (*$CSDnodes_ic).data().begin(), (*$CSDnodes_ic).data().end(), 0. );	    	
+	
+	(*$CSDnodes_ic)(0,0) = *$CSDEulerXstart;
+	for(int i=0; i<*$CSDEulerXnum; ++i) {
+		(*$CSDnodes_ic)(i,beamdirection) = *$CSDEulerXstart + i * dx;
+		(*$CSDnodes_ic)(i,spandirection) = posz;
+	}
+} ;		
+		
+//
+$rule blackbox(CSDdisplacementsStar{n},CSDxStar{n},CSDxdotStar{n},CSDxddotStar{n},CSDForcePreStar{n}<-
+							CSDEulerXnum,CSDnodes_ic,CSDx{n},CSDxdot{n},CSDxddot{n},CSDForce{n},CSDForcePre{n},
+							stime{n},ncycle{n},timeStep,CSDstartingTimeStep{n},CSDEulerBeamDirection,CSDEulerSpanDirection,
+							CSDE1,CSDthicknessStructure,CSDrhoStructure,CSDEulerChord,
+							CSDintegrationScheme,CSDgenAlphaCoeff,CSDnewmarkGammaCoeff,CSDnewmarkBetaCoeff,
+							CSDfrequency,CSDplungeAmplitudeY,CSDflappingAmplitudeX),							
+							constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude {
+	// call NLAMS
+	//communicateWithNLAMS(*CSDdisplacementsStar, ....) ;
+	//if (*$CFDIterationFinished) {
+	
+	const int rank = Loci::MPI_rank ;
+
+	if (rank==0) cout << "[I] Communicating with the Euler-Bernoulli beam solver.. " << endl ;
+	// Communicate with NLAMS
+	int CSDNumNodes = (*$CSDEulerXnum) ;
+	int CSDNumBC = 2 ;
+	int CSDdofNode = 2 ;
+	int CSDdofFree = CSDNumNodes * CSDdofNode - CSDNumBC ;
+	int CSDAnswerSize = 6 * CSDNumNodes ;
+
+	int beamdirection = (*$CSDEulerBeamDirection) ;
+	int spandirection = (*$CSDEulerSpanDirection) ;
+	
+	// Initialize
+	(*$CSDdisplacementsStar{n}).resize(CSDNumNodes,3) ; std::fill( (*$CSDdisplacementsStar{n}).data().begin(),(*$CSDdisplacementsStar{n}).data().end(), 0. );	
+	(*$CSDxStar{n}).resize(CSDdofFree) ; std::fill( (*$CSDxStar{n}).begin(),(*$CSDxStar{n}).end(), 0. );
+	(*$CSDxdotStar{n}).resize(CSDdofFree) ; std::fill( (*$CSDxdotStar{n}).begin(),(*$CSDxdotStar{n}).end(), 0. );
+	(*$CSDxddotStar{n}).resize(CSDdofFree) ; std::fill( (*$CSDxddotStar{n}).begin(),(*$CSDxddotStar{n}).end(), 0. );
+	(*$CSDForcePreStar{n}).resize(CSDAnswerSize,1) ; std::fill( (*$CSDForcePreStar{n}).data().begin(),(*$CSDForcePreStar{n}).data().end(), 0. );
+
+
+	if (rank==0) cout << "[I] Euler-Bernoulli.. initialized " << endl ;
+
+//	if (*$CFDIterationFinished{n,it-1}) {	
+
+		if (*$ncycle{n} < *$CSDstartingTimeStep{n}) {
+			 if (rank==0) cout << "CSDstartingTime not yet reached. Current time step = " << *$ncycle{n} << ", CSDstartingTimeStep = " << *$CSDstartingTimeStep{n} << endl ;
+		} else {	
+			int tempTimeStepNumber = *$ncycle{n} - *$CSDstartingTimeStep{n} + 1 ;	
+				
+			ublas::vector<real> CSDbeam1dForce(CSDNumNodes) ;	std::fill(CSDbeam1dForce.begin(), CSDbeam1dForce.end(), 0.0) ;
+			ublas::vector<real> disp(CSDNumNodes) ; std::fill(disp.begin(), disp.end(), 0.0) ;
+			ublas::vector<real> nodes(CSDNumNodes) ; std::fill(nodes.begin(), nodes.end(), 0.0) ;
+			
+			if (rank==0) cout << "[I] Euler-Bernoulli.. communication starting: " << CSDNumNodes << ", " << CSDbeam1dForce.size() << ", " << (*$CSDForce{n}).size1() << endl ;	
+			if (rank==0) cout << "[I] Euler-Bernoulli.. beamdirection: " << beamdirection << ", spandirection" << spandirection << endl ;	
+
+			for (int i=0; i<CSDNumNodes; ++i) {
+	//			if (rank==0) cout << "[I] Euler-Bernoulli.. before CSDforce" << endl ;	
+	//			CSDbeam1dForce[i] = (*$CSDForce{n})(6*i+1,0) ; // y-component only
+				CSDbeam1dForce[i] = ( 2.0 * ((*$CSDForce{n})(6*i+1,0)) - (*$CSDForcePre{n})(6*i+1,0) ) ; // y-component only
+	//			CSDbeam1dForce[i] = 0.0 ; // y-component only			
+	//			if (rank==0) cout << "[I] Euler-Bernoulli.. CSDbeam1dForce[" << i << "] = " << CSDbeam1dForce[i] << endl ;	
+				nodes[i] = (*$CSDnodes_ic)(i,beamdirection) ;
+	//			if (rank==0) cout << "[I] Euler-Bernoulli.. nodes[" << i << "] = " << nodes[i] << endl ;	
+			}
+			
+//			for (int i=0; i<CSDdofFree; ++i) {
+//				cout << "rank = " << rank << ", " << "[I] Euler-Bernoulli: i, x, xdot, xddot, disp = " << i << "\t" << (*$CSDx{n})[i] << "\t" << (*$CSDxdot{n})[i] << "\t" << (*$CSDxddot{n})[i] << "\t" << endl ;
+//			}
+			
+		if (rank==0) {
+			std::stringstream filename ;	
+			filename << "CSDnodesforces" << setfill('0') << setw(5) << tempTimeStepNumber << ".dat" ;
+			ofstream CSDnodesforces ;
+			CSDnodesforces.open(filename.str().c_str(), ios::out) ;
+			CSDnodesforces << "CSDnodes.x" << ", " << "CSDnodes.y" << ", " << "CSDnodes.z" << ", " << "CSDForce.x" << ", "  << "CSDForce.y" << ", " << "CSDForce.z" << "CSDdisp.x" << ", " << "CSDdisp.y" << ", " << "CSDdisp.z" << endl ;
+			for(int i=0; i<CSDNumNodes;++i) { // in CFD coordinates
+				CSDnodesforces << nodes[i] << ", " << (*$CSDForce{n})(i*6+0,0) << ", "  << (*$CSDForce{n})(i*6+1,0) << ", " << (*$CSDForce{n})(i*6+2,0)  << endl ;
+			}
+			CSDnodesforces.close();
+		}
+	
+
+			if (rank==0) cout << "[I] Euler-Bernoulli.. communication starting " << endl ;
+
+			// communiate	
+	     beam1d_(&rank, &CSDNumNodes, &CSDdofFree, &(nodes)[0], &(*$CSDplungeAmplitudeY), &(*$CSDflappingAmplitudeX), &(*$CSDfrequency), &(*$CSDEulerChord), &(*$CSDrhoStructure), &(*$CSDthicknessStructure),
+	        &*$CSDE1, &(*$CSDx{n})[0], &(*$CSDxdot{n})[0], &(*$CSDxddot{n})[0], &(CSDbeam1dForce)[0], &(*$timeStep), &(*$stime{n}), &tempTimeStepNumber, 
+	        &(*$CSDxStar{n})[0], &(*$CSDxdotStar{n})[0], &(*$CSDxddotStar{n})[0], &(disp)[0]) ;
+
+	  
+	  
+		  // update
+		  for (int i=0; i<CSDNumNodes; ++i) {
+				//(*$CSDdisplacementsStar{n})(i,0) = 0.0 ;
+				(*$CSDdisplacementsStar{n})(i,1) = disp[i];
+				//(*$CSDdisplacementsStar{n})(i,2) = 0.0 ;
+	//			cout << "rank = " << rank << ", " << "[I] Euler-Bernoulli: i, CSDdisplacementsStar, disp = " << i << "\t" << (*$CSDdisplacementsStar{n})(i,1) << "\t" << disp[i] << endl ;				
+			}
+		(*$CSDForcePreStar{n}) = (*$CSDForce{n}) ;
+			
+			for (int i=0; i<3; ++i) {
+				for (int n=0; n<CSDNumNodes; ++n) {
+	//				if ( fabs((*$CSDdisplacementsStar{n})(n,i))  < 1.0e-5 ) (*$CSDdisplacementsStar{n})(n,i) = 0.0 ;
+				}
+			}
+			
+//		const double PI = 4.0*atan(1.0) ;	
+//  		real alpha_amp = 15.0 ; 
+//		//real freq = *$CSDfrequency ; // period in sec
+//  		//real alpha = alpha_amp * sin(2.*PI * freq * (*$stime{n})) ;  		
+//		real tT = (*$ncycle{n}) / 500.0 ;
+//		real alpha = alpha_amp * sin( 2.0 * PI * tT );
+//
+//  		for(int i=0;i<CSDNumNodes;++i) {
+//		 	  (*$CSDdisplacementsStar{n})(i,0) = (*$CSDnodes_ic)(i,0) * ( cos(alpha*PI/180) - 1.) ;
+////		 	  (*$CSDdisplacementsStar{n})(i,0) = 0.0 ;
+//		 	  (*$CSDdisplacementsStar{n})(i,1) = (*$CSDnodes_ic)(i,0) * ( sin(alpha*PI/180) ) ;
+//		 	  (*$CSDdisplacementsStar{n})(i,2) = 0.0 ;
+//		  }
+//	   	if (Loci::MPI_rank==0) cout << "CSDdisplacement:" << (*$stime{n}) << ", alpha = " << alpha << endl ;			
+//			
+	//	for (int i=0; i<CSDdofFree; ++i) {
+	//		if (rank==0) cout << "[I] Euler-Bernoulli: i, xStar, xdotStar, xddotStar = " << i << "\t" << (*$CSDxStar{n})[i] << "\t" << (*$CSDxdotStar{n})[i] << "\t" << (*$CSDxddotStar{n})[i] << "\t" << endl ;
+	//	}
+			
+		if (rank==0) cout << "[I] Communication with the Euler-Bernoulli beam solver done. " << endl ;
+	}   
+//	} else {
+//		if (rank==0) cout << "[I] Communication with the Euler-Bernoulli beam solver bypassed. " << endl ;
+//		}
+} ;
+
+// -- Time advancing for the CSD Euler ----------------------------------------------------------------------------------------------------
+// Initialization rule for the CSDaccelerations
+
+// $rule blackbox(CSDForcePre_ic<-CSDEulerXnum),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude {
+// 	(*$CSDForcePre_ic).resize(6 * (*$CSDEulerXnum)) ; std::fill( (*$CSDForcePre_ic).begin(),(*$CSDForcePre_ic).end(), 0. );
+// } ;
+// 
+// $rule blackbox(CSDForcePre{n=0}<-CSDForcePre_ic),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+// 	(*$CSDForcePre{n=0}).resize((*$CSDForcePre_ic).size()) ; std::fill( (*$CSDForcePre{n=0}).begin(),(*$CSDForcePre{n=0}).end(), 0. );
+// 	(*$CSDForcePre{n=0}) = (*$CSDForcePre_ic) ;
+// } ;
+// 
+// // Iteration Advance rule for the CSD nodal accelerations from NLAMS
+// $rule blackbox(CSDForcePre{n+1}<-CSDForcePre{n},CSDForcePreStar{n}),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+// 	(*$CSDForcePre{n+1}).resize((*$CSDForcePre{n}).size()) ;std::fill( (*$CSDForcePre{n+1}).begin(),(*$CSDForcePre{n+1}).end(), 0. );
+// 	(*$CSDForcePre{n+1}) = (*$CSDForcePreStar{n}) ;	
+// } ;
+
+
+$rule blackbox(CSDx_ic<-CSDEulerXnum),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude {
+	int CSDNumBC = 2 ;
+	int CSDdofNode = 2 ;
+	int CSDdofFree = *$CSDEulerXnum * CSDdofNode - CSDNumBC ;
+	
+	(*$CSDx_ic).resize(CSDdofFree) ; std::fill( (*$CSDx_ic).begin(),(*$CSDx_ic).end(), 0. );
+} ;
+
+$rule blackbox(CSDx{n=0}<-CSDx_ic),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDx{n=0}).resize((*$CSDx_ic).size()) ; std::fill( (*$CSDx{n=0}).begin(),(*$CSDx{n=0}).end(), 0. );
+	(*$CSDx{n=0}) = (*$CSDx_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodal accelerations from NLAMS
+$rule blackbox(CSDx{n+1}<-CSDx{n},CSDxStar{n}),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDx{n+1}).resize((*$CSDx{n}).size()) ;std::fill( (*$CSDx{n+1}).begin(),(*$CSDx{n+1}).end(), 0. );
+	(*$CSDx{n+1}) = (*$CSDxStar{n}) ;	
+} ;
+
+// Initialization rule for the CSDaccelerations
+$rule blackbox(CSDxdot_ic<-CSDEulerXnum),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	
+	int CSDNumBC = 2 ;
+	int CSDdofNode = 2 ;
+	int CSDdofFree = *$CSDEulerXnum * CSDdofNode - CSDNumBC ;
+	
+	(*$CSDxdot_ic).resize(CSDdofFree) ; std::fill( (*$CSDxdot_ic).begin(),(*$CSDxdot_ic).end(), 0. );
+} ;
+
+$rule blackbox(CSDxdot{n=0}<-CSDxdot_ic),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDxdot{n=0}).resize((*$CSDxdot_ic).size()) ; std::fill( (*$CSDxdot{n=0}).begin(),(*$CSDxdot{n=0}).end(), 0. );
+	(*$CSDxdot{n=0}) = (*$CSDxdot_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodal accelerations from NLAMS
+$rule blackbox(CSDxdot{n+1}<-CSDxdot{n},CSDxdotStar{n}),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDxdot{n+1}).resize((*$CSDxdot{n}).size()) ;std::fill( (*$CSDxdot{n+1}).begin(),(*$CSDxdot{n+1}).end(), 0. );
+	(*$CSDxdot{n+1}) = (*$CSDxdotStar{n}) ;	
+} ;
+
+// Initialization rule for the CSDaccelerations
+$rule blackbox(CSDxddot_ic<-CSDEulerXnum),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	
+	int CSDNumBC = 2 ;
+	int CSDdofNode = 2 ;
+	int CSDdofFree = *$CSDEulerXnum * CSDdofNode - CSDNumBC ;
+	
+	(*$CSDxddot_ic).resize(CSDdofFree) ; std::fill( (*$CSDxddot_ic).begin(),(*$CSDxddot_ic).end(), 0. );
+} ;
+
+$rule blackbox(CSDxddot{n=0}<-CSDxddot_ic),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDxddot{n=0}).resize((*$CSDxddot_ic).size()) ; std::fill( (*$CSDxddot{n=0}).begin(),(*$CSDxddot{n=0}).end(), 0. );
+	(*$CSDxddot{n=0}) = (*$CSDxddot_ic) ;
+} ;
+
+// Iteration Advance rule for the CSD nodal accelerations from NLAMS
+$rule blackbox(CSDxddot{n+1}<-CSDxddot{n},CSDxddotStar{n}),constraint(FSICoupling,FSIEULERBEAM),option(disable_threading), prelude { 
+	(*$CSDxddot{n+1}).resize((*$CSDxddotStar{n}).size()) ;std::fill( (*$CSDxddot{n+1}).begin(),(*$CSDxddot{n+1}).end(), 0. );
+	(*$CSDxddot{n+1}) = (*$CSDxddotStar{n}) ;	
+} ;
+
+$rule blackbox(CSDnodes_ic<-CSDEulerXstart,CSDEulerXend,CSDEulerXnum),constraint(FSICoupling,FSIPRESCRIBED),option(disable_threading), prelude {
+	int nElements = *$CSDEulerXnum - 1;
+	real dx = (*$CSDEulerXend - *$CSDEulerXstart) / nElements ;
+	
+	(*$CSDnodes_ic).resize(*$CSDEulerXnum,3) ; std::fill( (*$CSDnodes_ic).data().begin(), (*$CSDnodes_ic).data().end(), 0. );	    	
+	
+	(*$CSDnodes_ic)(0,0) = *$CSDEulerXstart;
+	for(int i=0; i<*$CSDEulerXnum; ++i) {
+		(*$CSDnodes_ic)(i,0) = *$CSDEulerXstart + i * dx;
+	}
+} ;		
+
+$rule blackbox(CSDdisplacementsStar{n}<-
+							CSDEulerXnum,CSDnodes_ic,CSDForce{n},
+							stime{n},ncycle{n},timeStep,CSDstartingTimeStep,	
+							CSDfrequency,CSDflappingAmplitudeX),
+							constraint(FSICoupling,FSIPRESCRIBED),option(disable_threading), prelude {
+	// call NLAMS
+	//communicateWithNLAMS(*CSDdisplacementsStar, ....) ;
+	//if (*$CFDIterationFinished) {
+	
+	const int rank = Loci::MPI_rank ;
+
+	if (rank==0) cout << "[I] Communicating with the prescribed motion rule " << endl ;
+	// Communicate with NLAMS
+	int CSDNumNodes = (*$CSDEulerXnum) ;
+	
+	// Initialize
+	(*$CSDdisplacementsStar{n}).resize(CSDNumNodes,3) ; std::fill( (*$CSDdisplacementsStar{n}).data().begin(),(*$CSDdisplacementsStar{n}).data().end(), 0. );	
+	
+		if (*$ncycle{n} < *$CSDstartingTimeStep) {
+			 if (rank==0) cout << "CSDstartingTime not yet reached. Current time step = " << *$ncycle{n} << ", CSDstartingTimeStep = " << *$CSDstartingTimeStep << endl ;
+		} else {	
+			int tempTimeStepNumber = *$ncycle{n} - *$CSDstartingTimeStep + 1 ;	
+				
+			std::vector<real> CSDbeam1dForce(CSDNumNodes, 0.0) ;	
+			std::vector<real> disp(CSDNumNodes, 0.0) ;
+			std::vector<real> nodes(CSDNumNodes, 0.0) ;
+				
+			const double PI = 4.0*atan(1.0) ;	
+  		real alpha_amp = *$CSDflappingAmplitudeX ; 
+		  real freq = *$CSDfrequency ; // period in sec
+  		real alpha = alpha_amp * sin(2.*PI * freq * (*$stime{n})) ;  		
+
+  		for(int i=0;i<CSDNumNodes;++i) {
+		 	  (*$CSDdisplacementsStar{n})(i,0) = (*$CSDnodes_ic)(i,0) * ( cos(alpha*PI/180) - 1.) ;
+		 	  (*$CSDdisplacementsStar{n})(i,1) = (*$CSDnodes_ic)(i,0) * ( sin(alpha*PI/180) ) ;
+		 	  (*$CSDdisplacementsStar{n})(i,2) = 0.0 ;
+		  }
+	   	if (Loci::MPI_rank==0) cout << "CSDdisplacement:" << (*$stime{n}) << ", alpha = " << alpha << endl ;
+	  	//if (Loci::MPI_rank==0) cout << "CSDnodes_ic: " << (*$CSDnodes_ic) << endl ;
+	  	//if (Loci::MPI_rank==0) cout << "CSDdisplacementsStar: " << (*$CSDdisplacementsStar{n}) << endl ;	
+		  
+		  if (rank==0) cout << "[I] Communication with the prescribed motion rule done. " << endl ;
+		}   
+	
+} ;
+
+// -- itfsi --
+$rule singleton(itfsi_ic),constraint(UNIVERSE) {
+	$itfsi_ic = 0 ;
+}
+
+$rule singleton(itfsi{n=0}<-itfsi_ic) {
+	$itfsi{n=0}=$itfsi_ic ;
+}
+
+$rule singleton(itfsi{n+1}),conditional(iterationFinished{n,it-1}) {
+	
+	//if (Loci::MPI_rank==0) cout << "inside itfsi{n+1} in" << endl ;
+	$itfsi{n+1} = 0 ;
+	//if (Loci::MPI_rank==0) cout << "inside itfsi{n+1} out" << endl ;
+	
+}
+
+}

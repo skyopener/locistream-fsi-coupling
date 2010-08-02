@@ -1,0 +1,425 @@
+// This is basically a hacked version of Ed's ic.loci file.
+
+// Standard library includes.
+#include <map>
+#include <string>
+using std::map ;
+using std::string ;
+
+#include "initialConditionRegions.h"
+$include "chem.lh"
+
+namespace streamUns {
+
+  $type initialConditionRegions param<Loci::options_list> ;
+  $rule optional(initialConditionRegions) {}
+
+  class leftPlane : public geomTest {
+    vect3d pt ;
+    vect3d n ;
+  public:
+    leftPlane(vect3d p1, vect3d n1) : pt(p1),n(n1) {
+      n *= 1./norm(n) ;
+    }
+    leftPlane(const options_list &ol) {
+      if(!ol.optionExists("point") || !ol.optionExists("normal")) {
+        cerr << "leftPlane needs 'point' and 'normal'" << endl ;
+        Loci::Abort() ;
+      }
+      get_vect3dOption(ol,"point","m",pt) ;
+      get_vect3dOption(ol,"normal","",n) ;
+      n *= 1./max(norm(n),1e-33) ;
+    }
+    bool inGeomPt(vect3d pt) const ;
+  } ;
+
+  bool leftPlane::inGeomPt(vect3d p) const {
+    if(dot(p-pt,n) < 0.0)
+      return true ;
+    return false ;
+  }
+
+  class inBox : public geomTest {
+    double xmax,xmin,ymax,ymin,zmax,zmin ;
+  public:
+    inBox(vect3d p1, vect3d p2) {
+      xmax = max(p1.x,p2.x) ;
+      xmin = min(p1.x,p2.x) ;
+
+      ymax = max(p1.y,p2.y) ;
+      ymin = min(p1.y,p2.y) ;
+
+      zmax = max(p1.z,p2.z) ;
+      zmin = min(p1.z,p2.z) ;
+    }
+    inBox(const options_list &ol) {
+      if(!ol.optionExists("p1") || !ol.optionExists("p2")) {
+        cerr << "inBox needs two points, 'p1' and 'p2'" << endl ;
+        Loci::Abort() ;
+      }
+      vect3d p1,p2 ;
+      get_vect3dOption(ol,"p1","m",p1) ;
+      get_vect3dOption(ol,"p2","m",p2) ;
+      xmax = max(p1.x,p2.x) ;
+      xmin = min(p1.x,p2.x) ;
+
+      ymax = max(p1.y,p2.y) ;
+      ymin = min(p1.y,p2.y) ;
+
+      zmax = max(p1.z,p2.z) ;
+      zmin = min(p1.z,p2.z) ;
+    }
+
+    bool inGeomPt(vect3d pt) const ;
+  } ;
+
+  bool inBox::inGeomPt(vect3d p) const {
+    if(p.x >= xmin && p.x <= xmax &&
+       p.y >= ymin && p.y <= ymax &&
+       p.z >= zmin && p.z <= zmax)
+      return true ;
+    return false ;
+  }
+
+  class inSphere : public geomTest {
+    double r ;
+    double r2 ;
+    vect3d center ;
+  public:
+    inSphere(double ri,  vect3d c) { r=ri; center=c; r2=r*r ; }
+    inSphere(const options_list &ol) {
+      // Here get sphere information
+      if(!ol.optionExists("radius") || !ol.optionExists("center")) {
+        cerr << "inSphere needs a radius and center" << endl ;
+        Loci::Abort() ;
+      }
+      ol.getOptionUnits("radius","m",r) ;
+      get_vect3dOption(ol,"center","m",center) ;
+      r2=r*r ;
+    }
+    bool inGeomPt(vect3d pt) const ;
+  } ;
+
+  bool inSphere::inGeomPt(vect3d pt) const {
+    if(dot(pt-center,pt-center) < r2)
+      return true ;
+    return false ;
+  }
+
+  class inCylinder : public geomTest {
+    double r ;
+    double r2 ;
+    vect3d p1,p2 ;
+    vect3d n ;
+    double mag ;
+  public:
+    inCylinder(double ri,  vect3d p1i,vect3d p2i) {
+      r=ri;r2=r*r ;
+      p1=p1i;p2=p2i;
+      n = p2-p1 ;
+      mag = norm(n) ;
+      n *= 1./mag ;
+    }
+    inCylinder(const options_list &ol) {
+      // Here get sphere information
+      if(!ol.optionExists("radius") || !ol.optionExists("p1")
+         || !ol.optionExists("p2")) {
+        cerr << "inCylinder needs a radius and two axis points (p1 and p2)" << endl ;
+        Loci::Abort() ;
+      }
+      ol.getOptionUnits("radius","m",r) ;
+      get_vect3dOption(ol,"p1","m",p1) ;
+      get_vect3dOption(ol,"p2","m",p2) ;
+      n = p2-p1 ;
+      mag = norm(n) ;
+      n *= 1./mag ;
+      r2=r*r ;
+    }
+    bool inGeomPt(vect3d pt) const ;
+  } ;
+
+  bool inCylinder::inGeomPt(vect3d pt) const {
+    double v = dot(pt-p1,n) ;
+    if(v < 0.0 || v > mag)
+      return false ;
+    // project point onto axis
+    vect3d paxis = p1 + n*v ;
+    if(dot(pt-paxis,pt-paxis) > r2) // Check radius
+      return false ; // outside
+    return true ;// otherwise inside cylinder
+  }
+
+  class inCone : public geomTest {
+    double r1 ;
+    double r2 ;
+    vect3d p1,p2 ;
+    vect3d n ;
+    double mag ;
+  public:
+    inCone(double r1i, double r2i, vect3d p1i,vect3d p2i) {
+      r1=r1i;r2=r2i ;
+      p1=p1i;p2=p2i;
+      n = p2-p1 ;
+      mag = norm(n) ;
+      n *= 1./mag ;
+    }
+    inCone(const options_list &ol) {
+      // Here get sphere information
+      if(!ol.optionExists("r1") || !ol.optionExists("r2") ||
+         !ol.optionExists("p1") || !ol.optionExists("p2")) {
+        cerr << "inCone needs a two radii (r1 and r2) and two axis points (p1 and p2)" << endl ;
+        Loci::Abort() ;
+      }
+      ol.getOptionUnits("r1","m",r1) ;
+      ol.getOptionUnits("r2","m",r2) ;
+      get_vect3dOption(ol,"p1","m",p1) ;
+      get_vect3dOption(ol,"p2","m",p2) ;
+      n = p2-p1 ;
+      mag = norm(n) ;
+      n *= 1./mag ;
+    }
+    bool inGeomPt(vect3d pt) const ;
+  } ;
+
+  bool inCone::inGeomPt(vect3d pt) const {
+    double v = dot(pt-p1,n) ;
+    if(v < 0.0 || v > mag)
+      return false ;
+    // project point onto axis
+    double t = v/mag ;
+    double rx = r1*(1.-t) + r2*t ;
+    double rx2 = rx*rx ;
+    vect3d paxis = p1 + n*v ;
+    if(dot(pt-paxis,pt-paxis) > rx2) // Check radius
+      return false ; // outside
+    return true ;// otherwise inside cone
+  }
+
+  Loci::CPTR<geomTest> geomTestFactory(string name, const options_list ol) {
+    Loci::CPTR<geomTest> gp ;
+    if(name == "inSphere") {
+      gp = new inSphere(ol) ;
+    } else if(name == "inBox") {
+      gp = new inBox(ol) ;
+    } else if(name == "inCylinder") {
+      gp = new inCylinder(ol) ;
+    } else if(name == "inCone") {
+      gp = new inCone(ol) ;
+    } else if(name == "leftPlane") {
+      gp = new leftPlane(ol) ;
+    } else {
+      cerr << "don't know what to do with '" << name << "'" << endl ;
+      return 0 ;
+    }
+    return gp ;
+  }
+
+  $type icRegionInfo blackbox<ICparsedInitRegion> ;
+
+  fluidState getStateFromList(const options_list &ol, string name) {
+    fluidState f ;
+    using namespace Loci ;
+    option_value_type ovt= ol.getOptionValueType(name) ;
+    if(ovt != FUNCTION) {
+      cerr << "getState failed for variable '" << name
+           << "' expecting state function" << endl ;
+      Loci::Abort() ;
+    }
+    options_list::arg_list value_list ;
+    string fname ;
+    ol.getOption(name,fname,value_list) ;
+    if(fname != "state") {
+      cerr << "expecting to define function 'state', instead found '"
+           << fname << "'" << endl ;
+      Loci::Abort() ;
+    }
+    f.Input(value_list) ;
+    return f ;
+  }
+
+  $rule singleton(icRegionInfo<-initialConditionRegions,qvi,eos,Pambient,reactor),option(disable_threading) {
+    if(!$initialConditionRegions.optionExists("default")) {
+      cerr << "default initial condition must be set in initialConditionRegions" << endl ;
+      Loci::Abort() ;
+    }
+    int vs = $qvi.vectorSize() ;
+
+    $icRegionInfo.defaultState = getStateFromList($initialConditionRegions,
+                                                  "default") ;
+    if($initialConditionRegions.optionExists("regions")) {
+      using namespace Loci ;
+      option_value_type ovt= $initialConditionRegions.getOptionValueType("regions") ;
+      if(ovt != LIST) {
+        cerr << "regions in initialConditionRegions should define a list" << endl ;
+        Loci::Abort() ;
+      }
+      options_list::arg_list value_list ;
+      $initialConditionRegions.getOption("regions",value_list) ;
+      int sz = value_list.size() ;
+      for(int i=0;i<sz;++i) {
+        if(value_list[i].type_of() != FUNCTION) {
+          cerr << "regions is a list of geometric test functions" << endl ;
+          Loci::Abort() ;
+        }
+        string name ;
+        value_list[i].get_value(name) ;
+        options_list::arg_list fvalues ;
+        value_list[i].get_value(fvalues) ;
+        options_list fol ;
+        fol.Input(fvalues) ;
+        ICstate_info sinfo ;
+        string composition = "default" ;
+        if(fol.optionExists("composition")) {
+          option_value_type ovt= fol.getOptionValueType("composition") ;
+          if(ovt != NAME) {
+            cerr << "composition should be set to the name of a specified state." << endl ;
+          } else {
+            fol.getOption("composition",composition) ;
+          }
+        }
+
+        sinfo.regionState = getStateFromList($initialConditionRegions,
+                                             composition) ;
+        { vector<double> tmp(vs) ;
+          sinfo.q.swap(tmp) ;
+        }
+        { vector<double> tmp(vs) ;
+          sinfo.qp.swap(tmp) ;
+        }
+        sinfo.regionState.setState(&sinfo.q[0],
+                                   $qvi,$eos,$reactor) ;
+        sinfo.regionState.setPrimitive(&sinfo.qp[0],
+                                       $Pambient,$qvi,$eos,$reactor) ;
+//      print_state($eos,$qvi,&sinfo.qp[0],$Pambient,composition) ;
+        sinfo.name = composition ;
+        sinfo.geomTestFunc = geomTestFactory(name,fol) ;
+
+        $icRegionInfo.fluidRegions.push_back(sinfo) ;
+
+      }
+    } else {
+      if(Loci::MPI_rank == 0)
+        cerr << "Warning: No regions defined in initialConditionRegions!" <<endl ;
+    }
+    { vector<double> tmp(vs) ;
+      $icRegionInfo.default_q.swap(tmp) ;
+    }
+    { vector<double> tmp(vs) ;
+      $icRegionInfo.default_qp.swap(tmp) ;
+    }
+    $icRegionInfo.defaultState.setState(&$icRegionInfo.default_q[0],
+                                        $qvi,$eos,$reactor) ;
+    $icRegionInfo.defaultState.setPrimitive(&$icRegionInfo.default_qp[0],
+                                            $Pambient,$qvi,$eos,$reactor) ;
+//  print_state($eos,$qvi,&$icRegionInfo.default_qp[0],$Pambient,"default") ;
+
+  }
+
+  // Initial condition for velocity.
+  $type v_ic store<vect3d> ;
+  $rule pointwise(v_ic<-cellcenter,icRegionInfo),constraint(geom_cells) {
+
+    // Set the default state.
+    $v_ic=$icRegionInfo.defaultState.getVelocity() ;
+
+    // Loop over regions, overwriting velocity with latest region value if the
+    // cell center is in the region.
+    for(size_t j=0;j<$icRegionInfo.fluidRegions.size();++j) {
+      if($icRegionInfo.fluidRegions[j].geomTestFunc->inGeomPt($cellcenter)) {
+        $v_ic=$icRegionInfo.fluidRegions[j].regionState.getVelocity() ;
+      }
+    }
+  }
+
+  // Initial condition for pressure.
+  $type p_ic store<real> ;
+  $rule pointwise(p_ic<-cellcenter,icRegionInfo),constraint(geom_cells) {
+
+    // Set the default state.
+    $p_ic=$icRegionInfo.defaultState.getPressure() ;
+
+    // Loop over regions, overwriting pressure with latest region value if the
+    // cell center is in the region.
+    for(size_t j=0;j<$icRegionInfo.fluidRegions.size();++j) {
+      if($icRegionInfo.fluidRegions[j].geomTestFunc->inGeomPt($cellcenter)) {
+        $p_ic=$icRegionInfo.fluidRegions[j].regionState.getPressure() ;
+      }
+    }
+  }
+
+  // Initial condition for temperature.
+  $type T_ic store<real> ;
+  $rule pointwise(T_ic<-cellcenter,icRegionInfo),constraint(geom_cells) {
+
+    // Set the default state.
+    $T_ic=$icRegionInfo.defaultState.getTemperature() ;
+
+    // Loop over regions, overwriting temperature with latest region value if the
+    // cell center is in the region.
+    for(size_t j=0;j<$icRegionInfo.fluidRegions.size();++j) {
+      if($icRegionInfo.fluidRegions[j].geomTestFunc->inGeomPt($cellcenter)) {
+        $T_ic=$icRegionInfo.fluidRegions[j].regionState.getTemperature() ;
+      }
+    }
+  }
+
+  // Initial condition for k.
+  $type k_ic store<real> ;
+  $type omega_ic store<real> ;
+  $rule pointwise(k_ic,omega_ic<-cellcenter,icRegionInfo),constraint(geom_cells) {
+
+    // Set the default state.
+    $icRegionInfo.defaultState.get_k_omega($k_ic,$omega_ic) ;
+
+    // Loop over regions, overwriting temperature with latest region value if the
+    // cell center is in the region.
+    for(size_t j=0;j<$icRegionInfo.fluidRegions.size();++j) {
+      if($icRegionInfo.fluidRegions[j].geomTestFunc->inGeomPt($cellcenter)) {
+        $icRegionInfo.fluidRegions[j].regionState.get_k_omega($k_ic,$omega_ic) ;
+      }
+    }
+  }
+
+  // Initial condition for species mass fractions.
+  $type y_ic storeVec<real> ;
+  $rule pointwise(y_ic<-eos,cellcenter,icRegionInfo),constraint(geom_cells),
+  prelude {
+    $y_ic.setVecSize($eos->numSpecies()) ;
+  } compute {
+
+
+    // Set cell value to the default mixture. We must check each species for
+    // validity since Ed did not do so during parsing. Initialize all mass
+    // fractions to zero so unspecified values will have a default of zero.
+    for(int i=0;i<$eos.numSpecies();++i) $y_ic[i]=0.0 ;
+    map<string,real> defaultMixture=$icRegionInfo.defaultState.getMixture() ;
+    for(map<string,real>::const_iterator mi=defaultMixture.begin();
+    mi!=defaultMixture.end();++mi) {
+      int speciesIndex=$eos.speciesIndex(mi->first) ;
+      if(speciesIndex==-1){
+        cerr << "ERROR: Species " << mi->first << " does not exist."
+          << endl ; Loci::Abort() ;
+      }
+      $y_ic[speciesIndex]=mi->second ;
+    }
+
+    // Loop over regions, overwriting species mass fractions with latest region
+    // value if the cell center is in the region.
+    for(size_t j=0;j<$icRegionInfo.fluidRegions.size();++j) {
+      if($icRegionInfo.fluidRegions[j].geomTestFunc->inGeomPt($cellcenter)) {
+        for(int i=0;i<$eos.numSpecies();++i) $y_ic[i]=0.0 ;
+        map<string,real> mixture=$icRegionInfo.fluidRegions[j].regionState.getMixture() ;
+        for(map<string,real>::const_iterator mi=mixture.begin();
+        mi!=mixture.end();++mi) {
+          int speciesIndex=$eos.speciesIndex(mi->first) ;
+          if(speciesIndex==-1){
+            cerr << "ERROR: Species " << mi->first << " does not exist."
+              << endl ; Loci::Abort() ;
+          }
+          $y_ic[speciesIndex]=mi->second ;
+        }
+      }
+    }
+  }
+
+}

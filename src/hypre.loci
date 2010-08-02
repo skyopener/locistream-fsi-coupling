@@ -1,0 +1,780 @@
+//-----------------------------------------------------------------------------
+// Description: This file contains rules for the HYPRE linear solvers.
+//
+// Authors: Siddharth Thakur and Jeff Wright
+//          Streamline Numerics Inc.
+//          Gainesville, Florida 32609
+//-----------------------------------------------------------------------------
+
+// StreamUns includes.
+#include "hypre.h"
+
+namespace streamUns {
+
+  $type hypreCoarsenType param<int> ;
+  $rule default(hypreCoarsenType),
+    comments("HYPRE coarsening type."),
+    comments("0-CLJP coarsening."),
+    comments("3-Modified Ruge-Stueben coarsening."),
+    comments("6-Falgout coarsening.") {
+    $hypreCoarsenType=6 ;
+  }
+
+  $type hypreRelaxType param<int> ;
+  $rule default(hypreRelaxType),
+    comments("HYPRE relaxation type."),
+    comments("3-Hybrid Gauss-Seidel or SOR, forward solve."),
+    comments("4-Hybrid Gauss-Seidel or SOR, backward solve."),
+    comments("6-Hybrid symmetric Gauss-Seidel or SSOR.") {
+    $hypreRelaxType=3 ;
+  }
+
+  $type hypreConvergenceTolerance param<real> ;
+  $rule default(hypreConvergenceTolerance),
+    comments("HYPRE linear solver convergence tolerance.") {
+    $hypreConvergenceTolerance=1.0e-03 ;
+  }
+
+  $type hypreStrongThreshold param<real> ;
+  $rule default(hypreStrongThreshold),
+    comments("HYPRE strong threshold. Use 0.25 for 2-D problems."),
+    comments("Use 0.5 for 3-D problems.") {
+    $hypreStrongThreshold=0.5 ;
+  }
+
+  $type hypreMaxRowSum param<real> ;
+  $rule default(hypreMaxRowSum),comments("HYPRE maximum row sum parameter."),
+    comments("Default vale is 0.9.") {
+    $hypreMaxRowSum=0.9 ;
+  }
+
+  $type hypreMaxLevels param<int> ;
+  $rule default(hypreMaxLevels),
+    comments("Number of multigrid levels for HYPRE.") {
+    $hypreMaxLevels=16 ;
+  }
+
+  $type hypreNumSweeps param<int> ;
+  $rule default(hypreNumSweeps),
+    comments("Number of sweeps at each multigrid levels for HYPRE.") {
+    $hypreNumSweeps=1 ;
+  }
+
+  // Gets the number of cells assigned on all processes. This rule is
+  // definitely not in the Loci spirit since we are collecting data from
+  // other processes.
+  class HypreGetLocalCellData : public singleton_rule {
+    private:
+      param<vector<int> > hypreNumCell ;
+      param<vector<int> > hypreRowNumStart,hypreRowNumEnd ;
+      param<entitySet> hypreLocalCell ;
+    public:
+
+      // Define input and output.
+      HypreGetLocalCellData() {
+        name_store("hypreNumCell",hypreNumCell) ;
+        name_store("hypreRowNumStart",hypreRowNumStart) ;
+        name_store("hypreRowNumEnd",hypreRowNumEnd) ;
+        name_store("hypreLocalCell",hypreLocalCell) ;
+        output("hypreNumCell,hypreRowNumStart,hypreRowNumEnd,hypreLocalCell") ;
+        constraint("geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Get the number of cells for each process.
+      virtual void compute(const sequence &seq) {
+
+        // Get the collection of entities assigned to this processor
+        Loci::storeRepP myEntities=Loci::exec_current_fact_db->get_variable
+          ("my_entities") ;
+        entitySet localEntities=~EMPTY ;
+        if(myEntities!=0) localEntities=(*myEntities).domain() ;
+
+        // Get the local cells, not including the ghost cells.
+        entitySet localCellWithGhost=entitySet(seq) ;
+        *hypreLocalCell=(localEntities & localCellWithGhost) ;
+
+        // Distribute the number of cells to all processes.
+        *hypreNumCell=Loci::all_collect_sizes((*hypreLocalCell).size()) ;
+
+        // Save the starting and ending row numbers.
+        *hypreRowNumStart=vector<int>((*hypreNumCell).size()) ;
+        *hypreRowNumEnd=vector<int>((*hypreNumCell).size()) ;
+        (*hypreRowNumStart)[Loci::MPI_rank]=0 ;
+        for(int i=0;i<Loci::MPI_rank;++i) (*hypreRowNumStart)[Loci::MPI_rank]+=
+          (*hypreNumCell)[i] ;
+        (*hypreRowNumEnd)[Loci::MPI_rank]=(*hypreRowNumStart)[Loci::MPI_rank]+
+          (*hypreNumCell)[Loci::MPI_rank]-1 ;
+      }
+  } ;
+
+  register_rule<HypreGetLocalCellData> registerHypreGetLocalCellData ;
+
+  // Creates the cell-to-row map.
+  class HypreCellToRow : public pointwise_rule {
+    private:
+      const_param<vector<int> > hypreNumCell ;
+      store<int> hypreCellToRow ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreCellToRow() {
+        name_store("hypreNumCell",hypreNumCell) ;
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        input("hypreNumCell") ;
+        output("hypreCellToRow") ;
+        constraint("geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Set the Hypre row for each cell.
+      virtual void compute(const sequence & seq) {
+                                                                                
+        // Compute the row offset for this process.
+        int offset=0 ;
+        for(int i=0;i<Loci::MPI_rank;++i){ offset+=(*hypreNumCell)[i] ; }
+                                                                                
+        // Assign row number.
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<(*hypreNumCell)[Loci::MPI_rank];++cellPtr,++i){
+          hypreCellToRow[*cellPtr]=offset+i ;
+        }
+      }
+  } ;
+                                                                                
+  register_rule<HypreCellToRow> registerHypreCellToRow ;
+
+  // Rule that copies hypreCellToRow for periodic boundaries
+  class HypreCellToRowPeriodic : public pointwise_rule {
+    private:
+      const_Map cl,cr,pmap ;
+      store<int> hypreCellToRow ;
+    public:
+
+      // Define input and output.
+      HypreCellToRowPeriodic() {
+        name_store("cl",cl) ;
+        name_store("cr",cr) ;
+        name_store("pmap",pmap) ;
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        input("pmap->cl->hypreCellToRow") ;
+        output("cr->hypreCellToRow") ;
+      }
+
+      // Copy the values to ghost cells.
+      void calculate(Entity face) {
+        hypreCellToRow[cr[face]]=hypreCellToRow[cl[pmap[face]]] ;
+      }
+
+      // Call calculate for all periodic faces.
+      void compute(const sequence & seq) { do_loop(seq,this) ; }
+  } ;
+
+  register_rule<HypreCellToRowPeriodic> registerHypreCellToRowPeriodic ;
+
+  // Determines the number of non-zero entries in the local portion of the
+  // HYPRE matrix for each cell. The local portion is defined as the square
+  // row/column sub-block of the HYPRE matrix whose rows map to cells local
+  // to the process.
+  class HypreNumDiagonalNonZeroEntries : public pointwise_rule {
+    private:
+      const_param<entitySet> hypreLocalCell ;
+      const_multiMap upper,lower ;
+      const_Map cl,cr ;
+      store<int> hypreNumDiagonalNonZero ;
+    public:
+
+      // Define input and output.
+      HypreNumDiagonalNonZeroEntries() {
+        name_store("hypreLocalCell",hypreLocalCell) ;
+        name_store("cl",cl) ;
+        name_store("cr",cr) ;
+        name_store("upper",upper) ;
+        name_store("lower",lower) ;
+        name_store("hypreNumDiagonalNonZero",hypreNumDiagonalNonZero) ;
+        input("hypreLocalCell,upper->cr,lower->cl") ;
+        output("hypreNumDiagonalNonZero") ;
+        constraint("geom_cells") ;
+      }
+
+      // Initialize count with the diagonal entry.
+      void addDiagonal(Entity cell) { hypreNumDiagonalNonZero[cell]=1 ; }
+                                                                                
+      // Add the lower neighbor entry to the count if the neighbor is local.
+      // A neighbor is local if it appears in the set of local entities.
+      void addLower(Entity cell) {
+        int numNeighbor=lower.num_elems(cell) ;
+        for(int i=0;i<numNeighbor;++i) {
+          if((*hypreLocalCell).inSet(cl[lower[cell][i]]))
+            ++hypreNumDiagonalNonZero[cell] ;
+        }
+      }
+                                                                                
+      // Add the upper neighbor entry to the count if the neighbor is local.
+      // A neighbor is local if it appears in the set of local entities.
+      // IMPORTANT NOTE: With periodic boundaries, there is a flaw in the
+      // logic of this section of code, since upper->cr returns the ghost
+      // cell number (which is by definition not in the set of local cells)
+      // and not the interior cell number on the opposite side of the periodic
+      // boundary. Since hypreNumDiagonalNonZero and hypreNumOffDiagonalNonZero
+      // are only used during matrix allocation as a guess which helps improve
+      // memory allocation, we have just disabled the call to
+      // HYPRE_IJMatrixSetDiagOffdSizes in HypreMatrix::Create(). Supposedly the
+      // values passed are only required to be guesses, but the code was
+      // crashing in HYPRE due to the use of this call. JW 07/20/2009
+      void addUpper(Entity cell) {
+        int numNeighbor=upper.num_elems(cell) ;
+        for(int i=0;i<numNeighbor;++i){
+          if((*hypreLocalCell).inSet(cr[upper[cell][i]]))
+            ++hypreNumDiagonalNonZero[cell] ;
+        }
+      }
+                                                                                
+      // Compute the number of local non-zero entries.
+      void compute(const sequence & seq) {
+        do_loop(seq,this,&HypreNumDiagonalNonZeroEntries::addDiagonal) ;
+        do_loop(seq,this,&HypreNumDiagonalNonZeroEntries::addLower) ;
+        do_loop(seq,this,&HypreNumDiagonalNonZeroEntries::addUpper) ;
+      }
+
+  } ;
+
+  register_rule<HypreNumDiagonalNonZeroEntries>
+    registerHypreNumDiagonalNonZeroEntries ;
+
+  // Determines the number of non-zero entries in the non-local portion of the
+  // HYPRE matrix for each cell. For each row, this is just the total number
+  // of row entries minus the previously computed number of local entries.
+  class HypreNumOffDiagonalNonZeroEntries : public pointwise_rule {
+    private:
+      const_multiMap upper,lower ;
+      const_Map cl,cr ;
+      const_store<int> hypreNumDiagonalNonZero ;
+      store<int> hypreNumOffDiagonalNonZero ;
+    public:
+
+      // Define input and output.
+      HypreNumOffDiagonalNonZeroEntries() {
+        name_store("cl",cl) ;
+        name_store("cr",cr) ;
+        name_store("upper",upper) ;
+        name_store("lower",lower) ;
+        name_store("hypreNumDiagonalNonZero",hypreNumDiagonalNonZero) ;
+        name_store("hypreNumOffDiagonalNonZero",hypreNumOffDiagonalNonZero) ;
+        input("upper->cr,lower->cl,hypreNumDiagonalNonZero") ;
+        output("hypreNumOffDiagonalNonZero") ;
+        constraint("geom_cells") ;
+      }
+
+      // Compute the number of off-diagonal entries for each cell.
+      void calculate(Entity cell) {
+        hypreNumOffDiagonalNonZero[cell]=upper.num_elems(cell)+lower.
+          num_elems(cell)+1-hypreNumDiagonalNonZero[cell] ;
+      }
+
+      // Call calculate for all cells.
+      void compute(const sequence & seq) { do_loop(seq,this) ; }
+  } ;
+
+  register_rule<HypreNumOffDiagonalNonZeroEntries>
+    registerHypreNumOffDiagonalNonZeroEntries ;
+
+  // Sets up the HYPRE right-hand-side vector. Note that this is a unit_rule,
+  // since this is the only way we can have stores as input to a rule
+  // outputting blackboxes.
+  class HypreSetupRHSUnit : public unit_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_param<vector<int> > hypreRowNumStart,hypreRowNumEnd ;
+      blackbox<HypreVector> b ;
+    public:
+
+      // Define input and output.
+      HypreSetupRHSUnit() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreRowNumStart",hypreRowNumStart) ;
+        name_store("hypreRowNumEnd",hypreRowNumEnd) ;
+        name_store("hypreB(X)",b) ;
+        input("hypreCellToRow,hypreRowNumStart,hypreRowNumEnd") ;
+        output("hypreB(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Do the set-up.
+      void compute(const sequence & seq) {
+        (*b).Create((*hypreRowNumStart)[Loci::MPI_rank],(*hypreRowNumEnd)
+          [Loci::MPI_rank]) ;
+      }
+  } ;
+
+  register_rule<HypreSetupRHSUnit> registerHypreSetupRHSUnit ;
+
+  // Empty apply rule required by Loci. The data type and operator do not
+  // matter since nothing is done by this rule. Keep the same inputs and
+  // outputs as the unit rule, even though we don't have to.
+  class HypreSetupRHSApply : public apply_rule<blackbox<HypreVector>,
+  Loci::NullOp<HypreVector> > {
+    private:
+      const_store<int> hypreCellToRow ;
+      blackbox<HypreVector> b ;
+    public:
+
+      // Define input and output.
+      HypreSetupRHSApply() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreB(X)",b) ;
+        input("hypreCellToRow") ;
+        output("hypreB(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Do nothing.
+      void compute(const sequence & seq) {}
+  } ;
+                                                                                
+  register_rule<HypreSetupRHSApply> registerHypreSetupRHSApply ;
+
+  // Sets up the HYPRE matrix. Note that this is a unit_rule, since this is the
+  // only way we can have stores as input to a rule outputting blackboxes.
+  class HypreSetupMatrixUnit : public unit_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_param<vector<int> > hypreRowNumStart,hypreRowNumEnd ;
+      const_store<int> hypreNumDiagonalNonZero ;
+      const_store<int> hypreNumOffDiagonalNonZero ;
+      const_param<vector<int> > hypreNumCell ;
+      blackbox<HypreMatrix> A ;
+    public:
+
+      // Define input and output.
+      HypreSetupMatrixUnit() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreRowNumStart",hypreRowNumStart) ;
+        name_store("hypreRowNumEnd",hypreRowNumEnd) ;
+        name_store("hypreNumDiagonalNonZero",hypreNumDiagonalNonZero) ;
+        name_store("hypreNumOffDiagonalNonZero",hypreNumOffDiagonalNonZero) ;
+        name_store("hypreNumCell",hypreNumCell) ;
+        name_store("hypreA(X)",A) ;
+        input("hypreCellToRow,hypreRowNumStart,hypreRowNumEnd") ;
+        input("hypreNumDiagonalNonZero,hypreNumOffDiagonalNonZero") ;
+        input("hypreNumCell") ;
+        output("hypreA(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Do the set-up.
+      void compute(const sequence & seq) {
+
+        // Make temporary copy of matrix allocation data.
+        int count=0,*numDiagonalNonZero=hypre_CTAlloc(int,seq.size()),
+          *numOffDiagonalNonZero=hypre_CTAlloc(int,seq.size()) ;
+        for(sequence::const_iterator cellPtr=seq.begin();cellPtr!=seq.end();
+        ++cellPtr,++count){
+          numDiagonalNonZero[count]=hypreNumDiagonalNonZero[*cellPtr] ;
+          numOffDiagonalNonZero[count]=hypreNumOffDiagonalNonZero[*cellPtr] ;
+        }
+                                                                                
+        // Allocate the matrix.
+        (*A).Create((*hypreRowNumStart)[Loci::MPI_rank],(*hypreRowNumEnd)
+          [Loci::MPI_rank],numDiagonalNonZero,numOffDiagonalNonZero) ;
+                                                                                
+        // Deallocate temporary copy of matrix allocation data.
+        hypre_TFree(numDiagonalNonZero) ; hypre_TFree(numOffDiagonalNonZero) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreSetupMatrixUnit> registerHypreSetupMatrixUnit ;
+
+  // Empty apply rule required by Loci. The data type and operator do not
+  // matter since nothing is done by this rule. Keep the same inputs and
+  // outputs as the unit rule, even though we don't have to.
+  class HypreSetupMatrixApply : public apply_rule<blackbox<HypreMatrix>,
+  Loci::NullOp<HypreMatrix> > {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_store<int> hypreNumDiagonalNonZero ;
+      const_store<int> hypreNumOffDiagonalNonZero ;
+      const_param<vector<int> > hypreNumCell ;
+      blackbox<HypreMatrix> A ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreSetupMatrixApply() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreNumDiagonalNonZero",hypreNumDiagonalNonZero) ;
+        name_store("hypreNumOffDiagonalNonZero",hypreNumOffDiagonalNonZero) ;
+        name_store("hypreNumCell",hypreNumCell) ;
+        name_store("hypreA(X)",A) ;
+        input("hypreCellToRow,hypreNumDiagonalNonZero") ;
+        input("hypreNumOffDiagonalNonZero,hypreNumCell") ;
+        output("hypreA(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Do nothing.
+      void compute(const sequence & seq) {}
+  } ;
+                                                                                
+  register_rule<HypreSetupMatrixApply> registerHypreSetupMatrixApply ;
+
+  // Sets up the HYPRE linear solver.
+  class HypreSetupSolver : public singleton_rule {
+    private:
+      const_param<int> maxLinearSolverIterations ;
+      const_param<real> hypreConvergenceTolerance,hypreStrongThreshold,hypreMaxRowSum ;
+      const_param<int> hypreMaxLevels,hypreNumSweeps,hypreCoarsenType,hypreRelaxType ;
+      blackbox<HypreSolver> hypreSolver ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreSetupSolver() {
+        name_store("X_maxLinearSolverIterations",maxLinearSolverIterations) ;
+        name_store("hypreConvergenceTolerance",hypreConvergenceTolerance) ;
+        name_store("hypreStrongThreshold",hypreStrongThreshold) ;
+        name_store("hypreMaxLevels",hypreMaxLevels) ;
+        name_store("hypreNumSweeps",hypreNumSweeps) ;
+        name_store("hypreCoarsenType",hypreCoarsenType) ;
+        name_store("hypreRelaxType",hypreRelaxType) ;
+        name_store("hypreMaxRowSum",hypreMaxRowSum) ;
+        name_store("hypreSolver(X)",hypreSolver) ;
+        input("X_maxLinearSolverIterations,hypreConvergenceTolerance") ;
+        input("hypreStrongThreshold,hypreMaxLevels,hypreNumSweeps,hypreCoarsenType") ;
+        input("hypreMaxRowSum,hypreRelaxType") ;
+        output("hypreSolver(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Do the set-up. Using SetRelaxType() causes HYPRE to use Gaussian elimination
+      // on the coarsest level, which causes random crashes. So, go back to using
+      // SetCycleRelaxType() which allows us to specify the relaxtion type on the
+      // coarsest level as well. This fixes the problem.
+      void compute(const sequence & seq) {
+        (*hypreSolver).Create() ;
+        (*hypreSolver).SetCoarsenType(*hypreCoarsenType) ;
+        (*hypreSolver).SetCycleRelaxType(*hypreRelaxType,*hypreRelaxType,
+          *hypreRelaxType,*hypreRelaxType) ;
+        (*hypreSolver).SetNumSweeps(*hypreNumSweeps) ;
+        (*hypreSolver).SetMaxIterations(*maxLinearSolverIterations) ;
+        (*hypreSolver).SetMaxLevels(*hypreMaxLevels) ;
+        (*hypreSolver).SetMaxRowSum(*hypreMaxRowSum) ;
+        (*hypreSolver).SetStrongThreshold(*hypreStrongThreshold) ;
+        (*hypreSolver).SetTolerance(*hypreConvergenceTolerance) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreSetupSolver> registerHypreSetupSolver ;
+
+  // Assemble and solve the HYPRE system.
+  class HypreSolveUnit : public unit_rule {
+    private:
+      const_multiMap upper,lower ;
+      const_Map cl,cr ;
+      const_param<bool> debug ;
+      const_param<vector<int> > hypreRowNumStart,hypreRowNumEnd ;
+      const_store<real> xU,xL,xB,xD ;
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> b ;
+      const_blackbox<HypreMatrix> A ;
+      const_blackbox<HypreSolver> hypreSolver ;
+      blackbox<HypreVector> phi ;
+    public:
+
+      // Define input and output.
+      HypreSolveUnit() {
+        name_store("cl",cl) ;
+        name_store("cr",cr) ;
+        name_store("upper",upper) ;
+        name_store("lower",lower) ;
+        name_store("debug",debug) ;
+        name_store("hypreRowNumStart",hypreRowNumStart) ;
+        name_store("hypreRowNumEnd",hypreRowNumEnd) ;
+        name_store("X_U",xU) ;
+        name_store("X_L",xL) ;
+        name_store("X_B",xB) ;
+        name_store("X_D",xD) ;
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreB(X)",b) ;
+        name_store("hypreA(X)",A) ;
+        name_store("hypreSolver(X)",hypreSolver) ;
+        name_store("hyprePhi(X)",phi) ;
+        input("debug") ;
+        input("upper->cr->hypreCellToRow") ;
+        input("lower->cl->hypreCellToRow") ;
+        input("hypreRowNumStart,hypreRowNumEnd") ;
+        input("upper->X_U,lower->X_L,X_B,X_D") ;
+        input("hypreA(X),hypreB(X),hypreSolver(X)") ;
+        output("hyprePhi(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Assemble and solve.
+      virtual void compute(const sequence &seq) {
+
+        // Create and initialize the solution vector.
+        (*phi).Create((*hypreRowNumStart)[Loci::MPI_rank],(*hypreRowNumEnd)
+          [Loci::MPI_rank]) ;
+        InitializeSolutionVector(seq) ;
+
+        // Assemble the matrix.
+        AssembleMatrix(seq) ;
+
+        // Assemble the rhs vector.
+        AssembleRHS(seq) ;
+
+        // Solve the linear system
+        (*hypreSolver).Solve(*A,*b,*phi) ;
+
+        // Print diagnostics.
+        if(*debug){
+          cout << "HYPRE output:" << endl ;
+          cout << "  numIterations=" << (*hypreSolver).GetNumIterations() << endl ;
+          cout << "  residualNorm=" << (*hypreSolver).GetFinalRelativeResidualNorm() << endl ;
+        }
+      }
+
+      // Sets matrix values.
+      void AssembleMatrix(const sequence &seq) {
+
+        // Initialize the matrix.
+        (*A).Initialize() ;
+
+        // Iterate over cells. Note the fixed dimension of 100. There should
+        // always be way less than 100 neighbors for any cell.
+        int numRow=1 ;
+        int *colNum=hypre_CTAlloc(int,100) ;
+        double *colValue=hypre_CTAlloc(double,100) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int j=0;j<seq.size();++j,++cellPtr){
+
+          // Get the row number for this cell.
+          int rowNum[1]={hypreCellToRow[*cellPtr]} ;
+
+          // Set the diagonal entry for the row.
+          colNum[0]=rowNum[0] ; colValue[0]=xD[*cellPtr] ;
+
+          // Set the column entries for "upper" neighbors. Note the new
+          // if check for periodic boundaries which avoids possible
+          // self-reference.
+          const int numUpperEntry=upper.num_elems(*cellPtr) ; int count=1 ;
+          for(int i=0;i<numUpperEntry;++i,++count){
+            if(hypreCellToRow[*cellPtr]!=hypreCellToRow[cr[upper[*cellPtr][i]]]
+            ){
+              colNum[count]=hypreCellToRow[cr[upper[*cellPtr][i]]] ;
+              colValue[count]=xU[upper[*cellPtr][i]] ;
+            }else{
+              cout << "Self-reference in AssembleMatrix" << endl ;
+            }
+          }
+
+          // Set the column entries for "lower" neighbors.
+          const int numLowerEntry=lower.num_elems(*cellPtr) ;
+          for(int i=0;i<numLowerEntry;++i,++count){
+            colNum[count]=hypreCellToRow[cl[lower[*cellPtr][i]]] ;
+            colValue[count]=xL[lower[*cellPtr][i]] ;
+          }
+
+          // Insert row entries into the HYPRE matrix.
+          int numCol[1]={numUpperEntry+numLowerEntry+1} ;
+          (*A).SetValues(numRow,numCol,rowNum,colNum,colValue) ;
+
+        }
+        hypre_TFree(colNum) ; hypre_TFree(colValue) ;
+
+        // Assemble the matrix.
+        (*A).Assemble() ;
+      }
+
+      // Sets right-hand side values.
+      void AssembleRHS(const sequence &seq) {
+        (*b).Initialize() ; double *v=hypre_CTAlloc(double,seq.size()) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<seq.size();++i,++cellPtr) v[i]=xB[*cellPtr] ;
+        (*b).SetValues(v) ; (*b).Assemble() ; hypre_TFree(v) ;
+      }
+
+      // Initializes the unknown vector.
+      void InitializeSolutionVector(const sequence &seq) {
+        (*phi).Initialize() ; double *v=hypre_CTAlloc(double,seq.size()) ;
+        for(int i=0;i<seq.size();++i) v[i]=0.0 ;
+        (*phi).SetValues(v) ; (*phi).Assemble() ; hypre_TFree(v) ;
+      }
+  } ;
+
+  register_rule<HypreSolveUnit> registerHypreSolveUnit ;
+
+  // Empty apply rule required by Loci. The data type and operator do not
+  // matter since nothing is done by this rule. Keep the same inputs and
+  // outputs as the unit rule, even though we don't have to.
+  class HypreSolveApply : public apply_rule<blackbox<HypreVector>,
+  Loci::NullOp<HypreVector> > {
+    private:
+      const_multiMap upper,lower ;
+      const_Map cl,cr ;
+      const_store<real> xU,xL,xB,xD ;
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> b ;
+      const_blackbox<HypreMatrix> A ;
+      const_blackbox<HypreSolver> hypreSolver ;
+      blackbox<HypreVector> phi ;
+    public:
+
+      // Define input and output.
+      HypreSolveApply() {
+        name_store("cl",cl) ;
+        name_store("cr",cr) ;
+        name_store("upper",upper) ;
+        name_store("lower",lower) ;
+        name_store("X_U",xU) ;
+        name_store("X_L",xL) ;
+        name_store("X_B",xB) ;
+        name_store("X_D",xD) ;
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hypreB(X)",b) ;
+        name_store("hypreA(X)",A) ;
+        name_store("hypreSolver(X)",hypreSolver) ;
+        name_store("hyprePhi(X)",phi) ;
+        input("upper->cr->hypreCellToRow") ;
+        input("lower->cl->hypreCellToRow") ;
+        input("upper->X_U,lower->X_L,X_B,X_D") ;
+        input("hypreA(X),hypreB(X),hypreSolver(X)") ;
+        output("hyprePhi(X)") ;
+        constraint("X_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+
+      // Do nothing.
+      virtual void compute(const sequence &seq) {}
+  } ;
+                                                                                
+  register_rule<HypreSolveApply> registerHypreSolveApply ;
+
+  // Non-parametric rule for extracting pPrime from HYPRE.
+  class HypreCopyPPrime : public pointwise_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> hyprePPrime ;
+      store<real> pPrime ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreCopyPPrime() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hyprePhi(pPrime)",hyprePPrime) ;
+        name_store("pPrime",pPrime) ;
+        input("hypreCellToRow,hyprePhi(pPrime)") ;
+        output("pPrime") ;
+        constraint("pPrime_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Copy the solution back from HYPRE.
+      void compute(const sequence &seq) {
+        double *v=hypre_CTAlloc(double,seq.size()) ;
+        (*hyprePPrime).GetValues(v) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<seq.size();++i,++cellPtr) pPrime[*cellPtr]=v[i] ;
+        hypre_TFree(v) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreCopyPPrime> registerHypreCCopyPPrime ;
+
+  // Non-parametric rule for extracting pPrimeStar from HYPRE.
+  class HypreCopyPPrimeStar : public pointwise_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> hyprePPrimeStar ;
+      store<real> pPrimeStar ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreCopyPPrimeStar() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hyprePhi(pPrimeStar)",hyprePPrimeStar) ;
+        name_store("pPrimeStar",pPrimeStar) ;
+        input("hypreCellToRow,hyprePhi(pPrimeStar)") ;
+        output("pPrimeStar") ;
+        constraint("pPrimeStar_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Copy the solution back from HYPRE.
+      void compute(const sequence &seq) {
+        double *v=hypre_CTAlloc(double,seq.size()) ;
+        (*hyprePPrimeStar).GetValues(v) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<seq.size();++i,++cellPtr) pPrimeStar[*cellPtr]=v[i] ;
+        hypre_TFree(v) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreCopyPPrimeStar> registerHypreCCopyPPrimeStar ;
+
+  // Non-parametric rule for extracting hStar from HYPRE.
+  class HypreCopyHStar : public pointwise_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> hypreHStar ;
+      store<real> hStar ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreCopyHStar() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hyprePhi(hStar)",hypreHStar) ;
+        name_store("hStar",hStar) ;
+        input("hypreCellToRow,hyprePhi(hStar)") ;
+        output("hStar") ;
+        constraint("hStar_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Copy the solution back from HYPRE.
+      void compute(const sequence &seq) {
+        double *v=hypre_CTAlloc(double,seq.size()) ;
+        (*hypreHStar).GetValues(v) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<seq.size();++i,++cellPtr) hStar[*cellPtr]=v[i] ;
+        hypre_TFree(v) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreCopyHStar> registerHypreCCopyHStar ;
+
+  // Non-parametric rule for extracting yCurrStar from HYPRE.
+  class HypreCopyYCurrStar : public pointwise_rule {
+    private:
+      const_store<int> hypreCellToRow ;
+      const_blackbox<HypreVector> hypreYCurrStar ;
+      store<real> yCurrStar ;
+    public:
+                                                                                
+      // Define input and output.
+      HypreCopyYCurrStar() {
+        name_store("hypreCellToRow",hypreCellToRow) ;
+        name_store("hyprePhi(yCurrStar)",hypreYCurrStar) ;
+        name_store("yCurrStar",yCurrStar) ;
+        input("hypreCellToRow,hyprePhi(yCurrStar)") ;
+        output("yCurrStar") ;
+        constraint("yCurrStar_HYPRELinearSolver,geom_cells") ;
+        disable_threading() ;
+      }
+                                                                                
+      // Copy the solution back from HYPRE.
+      void compute(const sequence &seq) {
+        double *v=hypre_CTAlloc(double,seq.size()) ;
+        (*hypreYCurrStar).GetValues(v) ;
+        sequence::const_iterator cellPtr=seq.begin() ;
+        for(int i=0;i<seq.size();++i,++cellPtr) yCurrStar[*cellPtr]=v[i] ;
+        hypre_TFree(v) ;
+      }
+  } ;
+                                                                                
+  register_rule<HypreCopyYCurrStar> registerHypreCCopyYCurrStar ;
+}

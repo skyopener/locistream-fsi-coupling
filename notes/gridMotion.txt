@@ -1,0 +1,172 @@
+// Grid motion algorithm. Statements that do not appear inside
+// an "if" block apply to all situations. There are three grid-movement
+// scenarios:
+
+  1) rigidBodyGridMotion: The entire grid moves in a rigid-body manner.
+
+  2) pdeSolverTimeDependent: Boundaries of the domain move in a time-dependent
+     manner. Thus, node position changes only occur at the time level {n}.
+
+  3) pdeSolverSolutionDependent: Boundaries of the domain move as a function
+     of the fluid solution at {n,it}. Thus, node positions change at {n,it}.
+
+  // Get the node positions of the reference configuration from the grid file.
+  pos=f(gridFileName) ;
+
+  // Initialize the node displacements. For rigid-body rotation, we can
+  // move the entire grid to a starting location. For deforming mesh
+  // problems, the reference configuration in the vog file is the initial
+  // configuration, so we initialize all node displacements to zero.
+  if(rigidBodyGridMotion){
+    node_s_ic=f(input parameters) ;
+  }else{
+    node_s_ic=0.0 ;
+  }
+
+  // Initialize the node positions, face center positions, face area and
+  // cell volume.
+  pos_ic=f(pos,node_s_ic) ; facecenter_ic=f(pos_ic) ;
+  area_ic=f(pos_ic,facecenter_ic) ;
+  vol_ic=gclVolume(pos_ic,facecenter_ic,area_ic) ;
+
+  // Initialize the timestep. Note that the rules with {n=-1} are
+  // only used if we have BDF2. In addition, since we start with
+  // BDF on the first timestep, the initial conditions that are
+  // assigned here for {n=-1} are not used.
+  pos{n=-1}=pos{n=0}=pos_ic ; vol{n=-1}=vol{n=0}=vol_ic ;
+  node_s{n=0}=node_s_ic ;
+
+  // Time loop. At timestep "n" we are really solving for the updated
+  // variables at "n+1". So the {n} values represent the values at the
+  // end of the last timestep and {n-1} values the timestep before that.
+  for(int n=0;n<nMax;++n){
+
+    // Available variables from two timesteps ago.
+    if(BDF2) pos{n-1},vol{n-1} ;
+
+    // Available variables from the end of the last timestep.
+    node_s{n},pos{n},vol{n}
+
+    // Compute geometric quantities.
+    facecenter{n},area{n}
+
+    // Solve for the new node displacement and position.
+    if(rigidBodyGridMotion){
+      node_sStar{n}=f(input parameters,timeStep) ;
+    }else if(pdeSolver && gridMotionTimeDependent){
+
+      // Compute boundary node displacments for time-dependent boundaries.
+      // These represent the new values at {n+1}.
+      node_s_b{n}=f(input parameters) ;
+ 
+      node_sStar{n,itg=0}=node_s{n} ;
+      for(int itg=0;itg<itgMax;++itg){
+
+        // Current state.
+        node_sStar{n,itg} ;
+
+        // Assemble linear elasticity PDE based on {n} level values
+        // of geometry.
+
+        // Solve linear elasticity PDE for new displacement.
+        sStar{n,itg}=f(sStar_D{n},sStar_E{n},sStar_B{n,itg}) ;
+
+        // Advance node displacement.
+        node_sStar{n,itg+1}=sStar{n,itg} ;
+      }
+
+      // New displacment collapses out of the iteration.
+      node_sStar{n}=node_sStar{n,itgMax} ;
+    }
+
+    // Update the node positions.
+    if(gridMotionTimeDependent) posStar{n}=f(pos,node_sStar{n}) ;
+
+    // Compute old facet sums for GCL.
+    if(BDF2){
+      facecenterOld{n}=f(pos{n-1}) ;
+      node_vOld{n}=f(pos{n-1},pos{n},timeStep) ;
+      facetNormalSumOld{n},facetVDotNormalSumOld{n}=f(node_vOld{n},
+        pos{n-1},pos{n},facecenter{n},facecenterOld{n}) ;
+      oldvol{n}=gclVolume(pos{n-1},oldfacecenter{n},area{n}) ;
+    }
+
+    if(gridMotionTimeDependent){
+      facecenterStar=f(posStar),areaStar=f(posStar) ;
+      pos{n,it=0}=posStar{n} ;
+      vol{n,it=0}=f(posStar{n},facecenterStar,areaStar) ;
+    }else if(gridMotionSolutionDependent){
+      pos_it{n,it=0}=pos{n} ; vol_it{n,it=0}=vol{n} ;
+      node_s{n,it=0}=node_s{n} ;
+    }
+
+    // Iteration loop.
+    for(int it=0;it<itMax;++it){
+
+      if(gridMotionSolutionDependent){
+
+        // Current state.
+        node_s{n,it},pos_it{n,it},vol_it{n,it} ;
+
+        if(NLAMS){
+          // Pass in current node coordinates, face center and pressures
+          // on wing top and bottom and get back incremental deformations
+          // of nodes on the wing. It would be nicer if we could just get
+          // back the complete nodal displacements from the reference
+          // configuration in the vog file so that we do not have to track
+          // node_s_b over the iteration, which may cause so Loci issues.
+          node_s_b{n,it}=f(pos_it{n,it},facecenter(pos_it){n,it},p{n,it}) ;
+        }
+
+        // Solve linear elasticity PDE for new displacement.
+        sStar{n,it}=f(sStar_D{n},sStar_E{n},sStar_B{n,it}) ;
+
+        // Update the node positions.
+        pos{n,it}=f(pos,sStar{n,it}) ;
+      }
+
+      // New geometric information available once we have new positions.
+      facecenter{n,it}=f(pos{n,it} ; cellcenter{n,it}=f(facecenter{n,it} ;
+      area{n,it}=f(pos{n,it},facecenter{n,it}) ;
+      vol{n,it}=gclVolume(pos{n,it},area{n,it},facecenter{n,it}) ;
+
+      // Compute the facet normal sums. Tried to make this a function of
+      // node_v{n,it} and node_sNew{n,it} but encountered complaints from
+      // Loci. We will need this in order to be able to handle the case where
+      // node_v and node_sNew are solution-dependent, and will be produced at
+      // {n,it}. The problem seemed to be that node_v and node_sNew, if computed
+      // at {n} would not promote into {n,it}. To get around this, we may have
+      // to duplicate this rule and provide constraints for the two possible
+      // cases.
+      node_v{n,it}=f(pos{n,it},pos{n}) ;
+      facetNormalSum{n,it},facetVDotNormalSum{n,it}=f(node_v{n,it},
+        pos{n},pos{n,it},facecenter{n,it},facecenter{n}) ;
+
+      // Solve the fluids equations in the usual manner.
+
+      // Advance the node positions.
+      if(gridMotionTimeDependent){
+        pos{n,it+1}=pos{n,it} ; vol{n,it+1}=vol{n,it} ;
+      }else if(gridMotionSolutionDependent){
+        pos_it{n,it+1}=pos{n,it} ; vol_it{n,it+1}=vol{n,it} ;
+        node_s{n,it+1}=sStar{n,it} ;
+      }
+    }
+
+    // Iteration collapse/Time advance.
+    if(gridMotionTimeDependent){
+      pos{n+1}=pos{n,itMax-1} ; vol{n+1}=vol{n,itMax-1} ;
+      node_s{n+1}=node_sStar{n} ;
+    }else if(gridMotionSolutionDependent){
+      pos{n+1}=pos_it{n,itMax-1} ; vol{n+1}=vol_it{n,itMax-1} ;
+      node_s{n+1}=node_s{n,itMax-1} ;
+    }
+
+  }
+
+
+
+
+
+
+

@@ -1,0 +1,187 @@
+set -e; mpic++ -M   -O3 -fno-math-errno -fno-trapping-math -ffinite-math-only -fno-signaling-nans -fstrict-aliasing -fomit-frame-pointer     -DUSE_PETSC -DPETSC_USE_EXTERN_CXX -I/home/kangck/codes/loci/petsc-2.3.3-p11/include -I/home/kangck/codes/loci/petsc-2.3.3-p11/bmake/linux-gnu-c-opt -I/home/software/rhel5/hdf5/1.8.3-gcc/include -DH5_USE_16_API -DMPICH_IGNORE_CXX_SEEK    -Wall  -DLOCI_SYS_Linux -DLOCI_ARCH_x86_64 -I/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include   -I. -I..  RBF_petsc.cc \
+	| sed 's/\(RBF_petsc\)\.o[ :]*/\1.o \1_lo.o RBF_petsc.d : /g' > RBF_petsc.d; \
+		[ -s RBF_petsc.d ] || rm -f RBF_petsc.d
+make gridMotionRBF_m.so
+make[1]: Entering directory `/nobackup/kangck/codes/loci/stream-rel-1-4-2-new/src/gridMotionRBF'
+mpic++ -fPIC   -O3 -fno-math-errno -fno-trapping-math -ffinite-math-only -fno-signaling-nans -fstrict-aliasing -fomit-frame-pointer     -DUSE_PETSC -DPETSC_USE_EXTERN_CXX -I/home/kangck/codes/loci/petsc-2.3.3-p11/include -I/home/kangck/codes/loci/petsc-2.3.3-p11/bmake/linux-gnu-c-opt -I/home/software/rhel5/hdf5/1.8.3-gcc/include -DH5_USE_16_API -DMPICH_IGNORE_CXX_SEEK    -Wall  -DLOCI_SYS_Linux -DLOCI_ARCH_x86_64 -I/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include   -I. -I..  -o RBF_petsc_lo.o -c RBF_petsc.cc
+RBF_petsc.cc:767:49: warning: "/*" within comment
+RBF_petsc.cc:881:49: warning: "/*" within comment
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/datatype.h: In constructor ‘MPI::Datatype::Datatype()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/datatype.h:68: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/request.h: In constructor ‘MPI::Request::Request()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/request.h:60: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/group.h: In constructor ‘MPI::Group::Group()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/group.h:61: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/comm.h: In constructor ‘MPI::Comm_Null::Comm_Null()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/comm.h:61: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/win.h: In constructor ‘MPI::Win::Win()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/win.h:57: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/file.h: In constructor ‘MPI::File::File()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/file.h:91: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/errhandler.h: In constructor ‘MPI::Errhandler::Errhandler()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/errhandler.h:25: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/intercomm.h: In constructor ‘MPI::Intercomm::Intercomm()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/intercomm.h:29: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/info.h: In constructor ‘MPI::Info::Info()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/info.h:57: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/intracomm_inln.h: In constructor ‘MPI::Intracomm::Intracomm(ompi_communicator_t*)’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/intracomm_inln.h:25: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/intracomm_inln.h:28: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h: In constructor ‘MPI::Cartcomm::Cartcomm(ompi_communicator_t* const&)’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h:28: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h:33: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h: In constructor ‘MPI::Graphcomm::Graphcomm(ompi_communicator_t* const&)’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h:146: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/topology_inln.h:151: warning: type-punning to incomplete type might break strict-aliasing rules
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/op_inln.h: In constructor ‘MPI::Op::Op()’:
+/home/software/rhel5/openmpi-1.3.2/gcc/include/openmpi/ompi/mpi/cxx/op_inln.h:66: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h: At global scope:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:135: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:145: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:155: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:297: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:300: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_rep.h:303: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DMap.h:59: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DMap.h:62: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DMap.h:65: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/dist_internal.h: In function ‘std::vector<int, std::allocator<int> > Loci::all_collect_sizes(int)’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/dist_internal.h:39: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/keyspace.h: In constructor ‘Loci::KeySpace::KeySpace()’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/keyspace.h:250: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute.h: At global scope:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute.h:82: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute.h:83: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute.h:84: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute.h:85: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h: In function ‘void Loci::equiJoinFF(Loci::protoMap&, Loci::protoMap&, Loci::protoMap&)’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:185: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:192: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:194: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:195: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:212: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc: In member function ‘virtual void streamUns::RBFBoundaryNodeAssembleWeightApply::compute(const Loci::sequence&)’:
+RBF_petsc.cc:1109: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc:1109: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc:1109: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc: In member function ‘virtual void streamUns::PETSCInternalNodeApply::compute(const Loci::sequence&)’:
+RBF_petsc.cc:1213: warning: unused variable ‘localNumNode’
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h: In function ‘void Loci::parGetSplitters(std::vector<T, std::allocator<_CharT> >&, const std::vector<T, std::allocator<_CharT> >&, Cmp, ompi_communicator_t*) [with T = std::pair<int, int>, Cmp = bool (*)(const std::pair<int, int>&, const std::pair<int, int>&)]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:192:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:58: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:58: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h: In function ‘void Loci::parSplitSort(std::vector<T, std::allocator<_CharT> >&, std::vector<T, std::allocator<_CharT> >&, Cmp, ompi_communicator_t*) [with T = std::pair<int, int>, Cmp = bool (*)(const std::pair<int, int>&, const std::pair<int, int>&)]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/distribute_container.h:194:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:97: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:97: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:109: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parSampleSort.h:109: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h: In member function ‘void Loci::storeRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::entitySet&) [with T = Loci::vector3d<double>]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:362:   instantiated from ‘void Loci::storeRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = Loci::vector3d<double>]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:295: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:295: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h: In member function ‘void Loci::storeRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::sequence&) [with T = Loci::vector3d<double>]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:439:   instantiated from ‘void Loci::storeRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = Loci::vector3d<double>]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:377: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:377: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:382: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:382: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h: In member function ‘void Loci::storeRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::entitySet&) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:362:   instantiated from ‘void Loci::storeRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:295: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:295: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h: In member function ‘void Loci::storeRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::sequence&) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:439:   instantiated from ‘void Loci::storeRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:377: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:377: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:382: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/store_impl.h:382: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::packdata(Loci::USER_DEFINED_CONVERTER, void*, int&, int) [with T = std::vector<int, std::allocator<int> >]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:524:   instantiated from ‘void Loci::paramRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = std::vector<int, std::allocator<int> >]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:554: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:554: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:557: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:557: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::unpackdata(Loci::USER_DEFINED_CONVERTER, void*, int&, int&) [with T = std::vector<int, std::allocator<int> >]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:569:   instantiated from ‘void Loci::paramRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = std::vector<int, std::allocator<int> >]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:600: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:600: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:605: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:605: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::packdata(Loci::USER_DEFINED_CONVERTER, void*, int&, int) [with T = std::vector<double, std::allocator<double> >]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:524:   instantiated from ‘void Loci::paramRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = std::vector<double, std::allocator<double> >]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:554: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:554: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:557: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:557: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::unpackdata(Loci::USER_DEFINED_CONVERTER, void*, int&, int&) [with T = std::vector<double, std::allocator<double> >]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:569:   instantiated from ‘void Loci::paramRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = std::vector<double, std::allocator<double> >]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:600: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:600: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:605: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:605: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:524:   instantiated from ‘void Loci::paramRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:532: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:532: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int&) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:569:   instantiated from ‘void Loci::paramRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:584: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:584: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int) [with T = double]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:524:   instantiated from ‘void Loci::paramRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = double]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:532: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:532: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h: In member function ‘void Loci::paramRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int&) [with T = double]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:569:   instantiated from ‘void Loci::paramRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = double]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:584: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/parameter.h:584: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘Loci::storeRepP Loci::dstoreRepI<T>::redistribute(const std::vector<Loci::intervalSet, std::allocator<Loci::intervalSet> >&, ompi_communicator_t*) [with T = int]’:
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:234: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:234: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:277: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:277: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘Loci::storeRepP Loci::dstoreRepI<T>::redistribute(const std::vector<Loci::intervalSet, std::allocator<Loci::intervalSet> >&, ompi_communicator_t*) [with T = Loci::vector3d<double>]’:
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:234: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:234: warning: type-punning to incomplete type might break strict-aliasing rules
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:277: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:277: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘void Loci::dstoreRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::entitySet&) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:463:   instantiated from ‘void Loci::dstoreRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:478: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:478: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘void Loci::dstoreRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::sequence&) [with T = int]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:525:   instantiated from ‘void Loci::dstoreRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = int]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:537: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:537: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘void Loci::dstoreRepI<T>::packdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::entitySet&) [with T = Loci::vector3d<double>]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:463:   instantiated from ‘void Loci::dstoreRepI<T>::pack(void*, int&, int&, const Loci::entitySet&) [with T = Loci::vector3d<double>]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:478: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:478: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h: In member function ‘void Loci::dstoreRepI<T>::unpackdata(Loci::IDENTITY_CONVERTER, void*, int&, int, const Loci::sequence&) [with T = Loci::vector3d<double>]’:
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:525:   instantiated from ‘void Loci::dstoreRepI<T>::unpack(void*, int&, int&, const Loci::sequence&) [with T = Loci::vector3d<double>]’
+RBF_petsc.cc:1357:   instantiated from here
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:537: warning: type-punning to incomplete type might break strict-aliasing rules
+/nobackup/kangck/codes/loci/Loci-3.2-beta-12/OBJ/include/DStore_impl.h:537: warning: type-punning to incomplete type might break strict-aliasing rules
+mpic++ -shared -o  gridMotionRBF_m.so  \
+	boundaryCondition_lo.o RBF_deformation_lo.o flux_lo.o gridIO_lo.o hypre_lo.o metrics_lo.o RBF_move_lo.o nodeGradient_lo.o nodeValues_lo.o RBF_petsc_lo.o restart_lo.o scalarOutput_lo.o solver_lo.o source_lo.o
+make[1]: Leaving directory `/nobackup/kangck/codes/loci/stream-rel-1-4-2-new/src/gridMotionRBF'

@@ -1,0 +1,5 @@
+02/16/2005
+
+1) Added negatives in bcInput.cc and momentum.cc to give the proper sign for
+the mass flux at inlets with specified mdot or massFlux. The proper value for
+mass flux at inlets should be negative for incoming flow.

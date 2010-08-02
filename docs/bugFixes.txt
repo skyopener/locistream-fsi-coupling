@@ -1,0 +1,24 @@
+05/04/2005
+  Rule: KineticEnergyDiffusionToTotalEnthalpySourceTermBoundary
+  Problem/Fix: This rule should not be active for cases with wall functions.
+    Added the noWallFunction_BC constraint.
+
+05/05/2005
+  Rules: ViscousDissipationToTotalEnthalpySourceTermInterior
+         ViscousDissipationToTotalEnthalpySourceTermBoundary
+  Problem/Fix: Bad expression for viscous dissipation. Now consistent
+    with ST's notes for total enthalpy equation.
+
+05/13/2005
+  Rules: FOU inviscid flux rules.
+  Problem/Fix: Not ensuring diagonal dominance by subtracting contiuity
+    equation. Not a bug, but a different strategy (as used in UNS3D), which
+    is a total loser. Resulting instability of linear solver caused chaos
+    in temperature field. Now, using the same strategy as in the structured
+    code.
+
+06/16/2005
+  Rules: Implicit unsteady contribution to main coefficient for all eqs.
+  Problem/Fix: When fixing diagonal dominance problem above, forgot to change
+    rho{n,it} to rho{n} in the implicit unsteady component. This was causing
+    havoc for unsteady compressible flows.

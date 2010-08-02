@@ -1,0 +1,211 @@
+// Loci includes.
+#include <Loci.h>
+using Loci::rigid_transform ;
+using Loci::periodic_info ;
+
+// StreamUns includes.
+#include "sciTypes.h"
+$include "chem.lh"
+
+namespace streamUns {
+
+  // Additional variable types.
+  $type periodicTransform store<rigid_transform> ;
+
+  // This rule, in addition to providing the right cell volume for periodic
+  // faces, also causes the periodic faces to be included in our contraint
+  // "internalFaces" since this constraint is now computed using (cl,cr)->vol
+  // instead of (cl,cr)->geom_cells as was done before.
+  $rule pointwise(cr->vol<-pmap->cl->vol) {
+    $cr->$vol = $pmap->$cl->$vol ;
+  }
+
+  // Cell center.
+  $rule pointwise(cr->cellcenter<-pmap->cl->cellcenter,pmap->ref->
+  periodicTransform),constraint(periodicFaces) {
+    const rigid_transform &frame = $pmap->$ref->$periodicTransform ;
+    $cr->$cellcenter = frame.transform($pmap->$cl->$cellcenter) ;
+  }
+
+  // Laminar viscosity.
+  $type laminarViscosity store<real> ;
+  $rule pointwise(cr->laminarViscosity<-pmap->cl->laminarViscosity) {
+    $cr->$laminarViscosity=$pmap->$cl->$laminarViscosity ;
+  }
+
+  // Eddy viscosity. Only need this rule for laminar flow, since eddyViscosity
+  // is a derived variable for turbulent flows.
+  $type eddyViscosity store<real> ;
+  $rule pointwise(cr->eddyViscosity<-pmap->cl->eddyViscosity),
+  constraint(laminarFlow,periodicFaces) {
+    $cr->$eddyViscosity = $pmap->$cl->$eddyViscosity ;
+  }
+
+  // Speed of sound.
+  $type soundSpeed store<real> ;
+  $rule pointwise(cr->soundSpeed<-pmap->cl->soundSpeed) {
+    $cr->$soundSpeed=$pmap->$cl->$soundSpeed ;
+  }
+
+  // Specific heat.
+  $type cp store<real> ;
+  $rule pointwise(cr->cp<-pmap->cl->cp) {
+    $cr->$cp=$pmap->$cl->$cp ;
+  }
+
+  // Current species enthalpy for cells.
+  $type yCurrEnthalpyCell store<real> ;
+  $rule pointwise(cr->yCurrEnthalpyCell<-pmap->cl->yCurrEnthalpyCell) {
+    $cr->$yCurrEnthalpyCell=$pmap->$cl->$yCurrEnthalpyCell ;
+  }
+
+  // Density initial condition.
+  $type rho_ic store<real> ;
+  $rule pointwise(cr->rho_ic<-pmap->cl->rho_ic) {
+    $cr->$rho_ic=$pmap->$cl->$rho_ic ;
+  }
+
+  // Density.
+  $type rho store<real> ;
+  $rule pointwise(cr->rho<-pmap->cl->rho) {
+    $cr->$rho=$pmap->$cl->$rho ;
+  }
+
+  // Velocity initial condition.
+  $type v_ic store<vect3d> ;
+  $rule pointwise(cr->v_ic<-pmap->cl->v_ic,pmap->ref->periodicTransform),
+    constraint(periodicFaces) {
+    const rigid_transform &frame = $pmap->$ref->$periodicTransform ;
+    $cr->$v_ic=frame.rotate_vec($pmap->$cl->$v_ic) ;
+  }
+
+  // Velocity.
+  $type v store<vect3d> ;
+  $rule pointwise(cr->v<-pmap->cl->v,pmap->ref->periodicTransform),
+    constraint(periodicFaces) {
+    const rigid_transform &frame = $pmap->$ref->$periodicTransform ;
+    $cr->$v = frame.rotate_vec($pmap->$cl->$v) ;
+  }
+
+  // New velocity.
+  $type vStar store<vect3d> ;
+  $rule pointwise(cr->vStar<-pmap->cl->vStar,pmap->ref->periodicTransform),
+    constraint(periodicFaces) {
+    const rigid_transform &frame = $pmap->$ref->$periodicTransform ;
+    $cr->$vStar = frame.rotate_vec($pmap->$cl->$vStar) ;
+  }
+
+  // Pressure initial condition.
+  $type p_ic store<real> ;
+  $rule pointwise(cr->p_ic<-pmap->cl->p_ic) {
+    $cr->$p_ic=$pmap->$cl->$p_ic ;
+  }
+
+  // Pressure.
+  $type p store<real> ;
+  $rule pointwise(cr->p<-pmap->cl->p) {
+    $cr->$p=$pmap->$cl->$p ;
+  }
+
+  // Pressure correction.
+  $type pPrime store<real> ;
+  $rule pointwise(cr->pPrime<-pmap->cl->pPrime) {
+    $cr->$pPrime=$pmap->$cl->$pPrime ;
+  }
+
+  // Temperature initial condition.
+  $type T_ic store<real> ;
+  $rule pointwise(cr->T_ic<-pmap->cl->T_ic) {
+    $cr->$T_ic=$pmap->$cl->$T_ic ;
+  }
+
+  // Temperature.
+  $type temperature store<real> ;
+  $rule pointwise(cr->temperature<-pmap->cl->temperature) {
+    $cr->$temperature=$pmap->$cl->$temperature ;
+  }
+
+  // Total enthalpy.
+  $type h store<real> ;
+  $rule pointwise(cr->h<-pmap->cl->h) {
+    $cr->$h=$pmap->$cl->$h ;
+  }
+
+  // Updated total enthalpy.
+  $type hStar store<real> ;
+  $rule pointwise(cr->hStar<-pmap->cl->hStar) {
+    $cr->$hStar=$pmap->$cl->$hStar ;
+  }
+
+  // K initial condition.
+  $type k_ic store<real> ;
+  $rule pointwise(cr->k_ic<-pmap->cl->k_ic) {
+    $cr->$k_ic=$pmap->$cl->$k_ic ;
+  }
+
+  // K.
+  $type k store<real> ;
+  $rule pointwise(cr->k<-pmap->cl->k) {
+    $cr->$k=$pmap->$cl->$k ;
+  }
+
+  // Updated k.
+  $type kStar store<real> ;
+  $rule pointwise(cr->kStar<-pmap->cl->kStar) {
+    $cr->$kStar=$pmap->$cl->$kStar ;
+  }
+
+  // Omega initial condition.
+  $type omega_ic store<real> ;
+  $rule pointwise(cr->omega_ic<-pmap->cl->omega_ic) {
+    $cr->$omega_ic=$pmap->$cl->$omega_ic ;
+  }
+
+  // Omega.
+  $type omega store<real> ;
+  $rule pointwise(cr->omega<-pmap->cl->omega) {
+    $cr->$omega=$pmap->$cl->$omega ;
+  }
+
+  // Updated omega.
+  $type omegaStar store<real> ;
+  $rule pointwise(cr->omegaStar<-pmap->cl->omegaStar) {
+    $cr->$omegaStar=$pmap->$cl->$omegaStar ;
+  }
+
+  // F1.
+  $type f1 store<real> ;
+  $rule pointwise(cr->f1<-pmap->cl->f1) {
+    $cr->$f1=$pmap->$cl->$f1 ;
+  }
+
+  // F2.
+  $type f2 store<real> ;
+  $rule pointwise(cr->f2<-pmap->cl->f2) {
+    $cr->$f2=$pmap->$cl->$f2 ;
+  }
+
+  // Species initial condition.
+  $type y_ic storeVec<real> ;
+  $rule pointwise(cr->y_ic<-pmap->cl->y_ic) {
+    $cr->$y_ic=$pmap->$cl->$y_ic ;
+  }
+
+  // Species.
+  $type y storeVec<real> ;
+  $rule pointwise(cr->y<-pmap->cl->y) {
+    $cr->$y=$pmap->$cl->$y ;
+  }
+
+  // Current species.
+  $type yCurr store<real> ;
+  $rule pointwise(cr->yCurr<-pmap->cl->yCurr) {
+    $cr->$yCurr=$pmap->$cl->$yCurr ;
+  }
+
+  // Updated species.
+  $type yCurrStar store<real> ;
+  $rule pointwise(cr->yCurrStar<-pmap->cl->yCurrStar) {
+    $cr->$yCurrStar=$pmap->$cl->$yCurrStar ;
+  }
+}

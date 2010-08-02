@@ -1,0 +1,466 @@
+2a3
+> //
+37,40c38,40
+< #include <petsc.h>
+< #include <petscerror.h>
+< #include <petscksp.h>
+< #include <petscpc.h>
+---
+> //#include <petsc.h>
+> //#include <petscerror.h>
+> //#include <petscksp.h>
+47a48,57
+> // Include PETSC wrappers
+> 
+> // PETSC includes.
+> #include <petsc.h>
+> #include <petscerror.h>
+> #include <petscksp.h>
+> 
+> // StreamUns includes.
+> #include "sciTypes.h"
+> 
+55a66,69
+> // delim
+> #include <string>
+> #include "delim.h"
+> 
+57a72
+> 	
+59c74,75
+< 	string delim=", " ;
+---
+> 	//delim = ", " ;
+> 
+131,134c147
+<         if(created) {
+< 			if (Loci::MPI_rank==0) cout << "Multi-vector already created.." << endl ;
+< 			return 0 ;
+< 		}
+---
+>         if(created) return 0 ;
+186d198
+< //      Petsc::Mat m ;
+193d204
+< //		cout << "i'm here assembly begin,r: " << Loci::MPI_rank << endl ;
+195,196c206
+< //		cout << "i'm here assembly begin after,r: " << Loci::MPI_rank << endl ;
+<         CHKERRQ(ierr) ; return ierr ;
+---
+>         CHKERRQ(ierr) ; return 0 ;
+199d208
+< //		cout << "i'm here assembly end,r: " << Loci::MPI_rank << endl ;
+201,202c210
+< //		cout << "i'm here assembly end after,r: " << Loci::MPI_rank << endl ;
+<        CHKERRQ(ierr) ; return ierr ;
+---
+>        CHKERRQ(ierr) ; return 0 ;
+207d214
+< 		int ierr ;
+209c216
+<           ierr=MatCreateMPIAIJ(PETSC_COMM_WORLD,numLocalRow,numLocalRow,
+---
+>           int ierr=MatCreateMPIAIJ(PETSC_COMM_WORLD,numLocalRow,numLocalRow,
+213c220
+<           ierr=MatCreateSeqAIJ(PETSC_COMM_WORLD,numGlobalRow,numGlobalRow,
+---
+>           int ierr=MatCreateSeqAIJ(PETSC_COMM_WORLD,numGlobalRow,numGlobalRow,
+216c223
+<         created=true ; return ierr ;
+---
+>         created=true ; return 0 ;
+222,223c229
+< 		  int ierr = MatGetInfo(m,MAT_LOCAL,&info); CHKERRQ(ierr) ;
+< //		cout << "i'm here getinfo, r: " << Loci::MPI_rank << endl ;
+---
+> 		  MatGetInfo(m,MAT_LOCAL,&info);
+225,226c231,232
+< 		  cout << "PETSC info: rank= " << Loci::MPI_rank << " Number of mallocs during MatSetValues() --> " << mal << delim << "Number of nonzeros (allocated, used, unneeded): " << nz_alloc << delim << nz_used << delim << nz_un << endl ;
+< 	return ierr ;
+---
+> 		  cout << "PETSC info: Number of mallocs during MatSetValues(): " << mal << delim << "Number of nonzeros (allocated, used, unneeded): " << nz_alloc << delim << nz_used << delim << nz_un << endl ;
+> 		  return 0 ;
+232,242d237
+< 	  void IsSymmetric() const {
+< 		  PetscTruth ierr ;
+< 		MatIsSymmetric(m, 1.0e-10,&ierr);
+< 	 if (Loci::MPI_rank==0) {
+< 		 if (ierr) {
+< 			 cout << "Matrix is indeed symmetric" << endl ;
+< 		 } else {
+< 			 cout << "Matrix is not symmetric" << endl;
+< 		 }
+< 	 }
+< 	 }
+244c239
+<       *columnValues) {
+---
+>       *columnValues) const {
+246c241
+<           INSERT_VALUES) ; CHKERRQ(ierr) ; return ierr ;
+---
+>           INSERT_VALUES) ; CHKERRQ(ierr) ; return 0 ;
+264,285d258
+< 	  int GetConvergedReason() const {
+< 		  KSPConvergedReason reason ;
+< 		  KSPGetConvergedReason(ksp, &reason) ;
+< 		  if (Loci::MPI_rank==0) {
+< 			  if (reason==KSP_CONVERGED_RTOL) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_RTOL" << endl ;
+< 			  } else if (reason==KSP_CONVERGED_ATOL) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_ATOL" << endl ;
+< 			  } else if (reason==KSP_CONVERGED_ITS) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_CONVERGED_ITS" << endl ;
+< 			  } else if (reason==KSP_DIVERGED_NULL) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_NULL" << endl ;
+< 			  } else if (reason==KSP_DIVERGED_ITS) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_ITS" << endl ;
+< 			  } else if (reason==KSP_DIVERGED_DTOL) {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << " KSP_DIVERGED_DTOL" << endl ;
+< 			  } else {
+< 				  cout << "PETSC solver: GetConvergedReason = " << reason << endl ;
+< 			  }
+< 		  }
+< 		  return 0;
+< 	  }
+299,302d271
+< 	  int SetRestart(int Restart) {
+< 		  int ierr=KSPGMRESSetRestart(ksp, Restart) ;
+< 		  CHKERRQ(ierr) ; return ierr ;
+< 	  }
+310,312d278
+< 	  void SetMINRES() {
+< 		  KSPSetType(ksp, KSPMINRES) ;
+< 	  }
+332c298
+<   
+---
+> 	
+395,396c361
+< 						distance = sqrt(distance) ;
+< 						distance /= (*r) ;
+---
+> 						distance /= ((*r)*(*r)) ;
+463,467c428
+< //		(*ksp).SetMINRES() ; // use minres
+< //		  (*ksp).SetInitialGuessNonzero() ; // Set initial guess using the values
+<         (*ksp).SetTolerances(*linearSolverTolerance,1.0e-5,*maxLinearSolverIterations) ;
+< 	  (*ksp).SetRestart(30000) ;
+<         (*ksp).SetFromOptions() ;
+---
+>         (*ksp).SetTolerances(*linearSolverTolerance,1.0e-30,*maxLinearSolverIterations) ;
+469c430
+< //      PC pc ; (*ksp).GetPC(&pc) ; PCSetType(pc,PCILU) ; // PCFactorSetShiftType(pc,MAT_SHIFT_POSITIVE_DEFINITE) ;//PCILUSetLevels(pc,3) ;
+---
+>       //PC pc ; (*ksp).GetPC(&pc) ; PCSetType(pc,PCILU) ; PCILUSetLevels(pc,3) ;
+473c434
+< //      PC pc ; (*ksp).GetPC(&pc) ; PCSetType(pc,PCSOR); // PCSetType(pc,PCJACOBI) ;
+---
+> 	  (*ksp).SetInitialGuessNonzero() ; // Set initial guess using the values
+474a436
+>         (*ksp).SetFromOptions() ;
+539a502,504
+> 
+> 		// assemble
+> 		(*b).AssemblyBegin(); (*b).AssemblyEnd() ;
+592c557
+<       int rowIndex, columnIndex ;
+---
+>       int columnIndex ;
+667c632
+< //		cout << "p,r,Diag,OffDiag" << p << delim << rank << delim << sumDiag << delim << sumOffDiag << endl ;
+---
+> 		cout << "p,r,Diag,OffDiag" << p << delim << rank << delim << sumDiag << delim << sumOffDiag << endl ;
+670,676c635
+<         int ierr = (*A).Create(localNumNode,globalNumNode,numDiagonalNonZero,numOffDiagonalNonZero) ;
+< 		if (!ierr) {
+< 			cout << "A matrix succesfully created for rank, localNumNode, globalNumNode, sumDiag, sumOffDiag " << rank << delim << localNumNode << delim << globalNumNode << delim << sumDiag << delim << sumOffDiag << endl ;
+< 		} else {
+< 			cout << "A matrix creation not successful, r,ierr: " << rank << delim << ierr << endl ;
+< 		}
+< //		cout << "p,r,localNumNode,globalNumNode,diagNonZero,offDiagNonZero" << p << delim << rank << delim << localNumNode << delim << globalNumNode << delim << numDiagonalNonZero << delim << numOffDiagonalNonZero << endl ;
+---
+>         (*A).Create(localNumNode,globalNumNode,numDiagonalNonZero,numOffDiagonalNonZero) ;
+681,684c640,643
+< 
+<         // Get the number of local and global nodes.
+< //        int localNumNode=(*rbfNumBoundaryNode)[rank],globalNumNode=0 ;
+<         globalNumNode = 0;
+---
+> 		
+> 		// Get the number of local and global nodes ==> Nb
+> 		
+>         int localNumNode=(*rbfNumBoundaryNode)[rank],globalNumNode=0 ;
+686,748c645
+< 		  		
+< 		// include the polynomial coeff. computation
+< //		if (rank == p-1) { // last rank takes care of beta
+< //			localNumNode += 4; // d+1 = 4
+< //		}		
+< 		//globalNumNode+=4; // for beta (d+1)
+< 
+< 		// Compute the row offset for this process.
+<         localStart=0 ; 
+<         for(int i=0;i<rank;++i) localStart+=(*rbfNumBoundaryNode)[i]  ;  // 3 coordinates
+< 
+< 		double distance = 0.;
+< //		int localEnd = localStart+localNumNode ;
+< 		double valueQ[4] ;
+< 		ierr=0;
+< 		PetscScalar value=0.0 ;
+< //		cout << "localStart, localEnd, globalNumNode, sizeQ: " << localStart << ", " << localEnd << ", " << globalNumNode << ", " << (*Q).size() << endl ;
+< //		cout << "here ok?" << endl ;
+< 		// Q[row,col]=Q[3*row+col], Q=[0,1,2;3,4,5;...]
+< 		int counter=localStart ;
+< 		int I,I1,I2,J,J1,J2;
+< //		cout << "Start Assembling A inside the rule,r=" << rank << "RBF: r,a,rnfNr = " << *r << delim << *a << delim << *rbfNr << " localStart,localEnd,Qsize: " << localStart << delim << localEnd << delim << (*Q).size() << endl ;
+< 		//sequence::const_iterator nodePtr ;
+< 		for(nodePtr=seq.begin();nodePtr!=seq.end();++nodePtr,++counter){	// Q[row,col]=Q[3*row+col], Q=[0,1,2;3,4,5;...]
+< 			I=3*counter; I1=3*counter+1; I2=3*counter+2 ;
+< //		for(int i=localStart;i<localEnd;++i){			
+< 			for(int j=0;j<globalNumNode;++j){
+< 				J=3*j; J1=3*j+1; J2=3*j+2 ;
+< //				cout << "r, I,J " << rank << delim << I << ", " << J << ": " ;
+< 				distance = pow((*Q)[I] - (*Q)[J], 2.) ; //)*((*Q)[I] - (*Q)[J]) ;
+< 				distance += pow((*Q)[I1] - (*Q)[J1], 2.) ; //*((*Q)[I1] - (*Q)[J1]) ;
+< 				distance += pow((*Q)[I2] - (*Q)[J2], 2.) ; //)*((*Q)[I2] - (*Q)[J2]) ;
+< 				if (distance < 0.0) cout << "distance < 0" << endl ;
+< 				distance = sqrt(distance) ;
+< 				if (!( ((*rbfNr) > 0 && (*rbfNr) < 9) && (distance/(*r) > 1.))) { // compact
+< 					value = radialBasisFunction(distance, *r, *a, *rbfNr) ;				
+< //					cout << "r, distance,value: " << rank << delim <<  distance << ", " << value << endl ;
+< 					rowIndex=counter; columnIndex=j; columnValue=value;
+< 					ierr=(*A).SetRowValues(rowIndex,1,&columnIndex,&columnValue) ; // i:row, j:column
+< 					if (ierr) cout << "r,ierr,rowIndex,columnIndex,columnValue,sizeQ: " << rank << delim << ierr << delim << rowIndex << delim << columnIndex << delim << columnValue << delim << (*Q).size() << endl ;
+< 				}
+< 			}			
+< //			cout << "after inserting phi_bb, r, counter" << rank << delim << counter << endl ;
+< 			valueQ[0] = 1.0; valueQ[1]=(*Q)[I]; valueQ[2]=(*Q)[I1]; valueQ[3]=(*Q)[I2];
+< 			for(int j=0; j<4; ++j) {
+< //				rowIndex=counter; columnIndex=globalNumNode-4+j; columnValue=valueQ[j] ;
+< 				rowIndex=counter; columnIndex=globalNumNode+j; columnValue=valueQ[j] ;
+< 				ierr = (*A).SetRowValues(rowIndex,1,&columnIndex,&columnValue) ; // i:row, j:column
+< //				rowIndex=globalNumNode-4+j; columnIndex=counter; 
+< 				rowIndex=globalNumNode+j; columnIndex=counter; 
+< 				(*A).SetRowValues(rowIndex,1,&columnIndex, &columnValue); // Q^T
+< 			}			
+< 		}
+< //		cout << "Start Assembling A: petsc assemble start, p,r: " << p << delim << rank << endl ;
+< //		MPI_Barrier(MPI_COMM_WORLD) ; cout << "After MPI_Barrier, r: " << rank << delim << ierr << endl ;
+< 		ierr = (*A).GetInfo() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< //		cout << "Start Assembling A,r=" << rank <<  endl ;
+< 		ierr = (*A).AssemblyBegin() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< 		ierr = (*A).AssemblyEnd() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< //		cout << "After Assembling A: petsc assemble end, p,r: " << p << delim << rank << endl ;
+< 		(*A).IsSymmetric() ;
+< 	  
+< /*		
+---
+> 		
+758c655
+< //		cout << "Start Assembling A,r=" << rank <<  endl ;
+---
+> //		cout << "Start Assembling A" << endl ;
+764c661
+< //				cout << "I,j " << I << ", " << j << ": " ;
+---
+> //				cout << "i,j " << i << ", " << j << ": " ;
+768d664
+< if (distance < 0.0) cout << "distance < 0" << endl ;
+772c668
+< //					cout << "distance,value: " << distance << ", " << value << endl ;
+---
+> 	//				cout << "distance,value: " << distance << ", " << value << endl ;
+781c677
+< 				columnIndex=globalNumNode-4+j; columnValue=valueQ[j];
+---
+> 				columnIndex=globalNumNode+j; columnValue=valueQ[j];
+784c680
+< 				(*A).SetRowValues(globalNumNode-4+j,1,&columnIndex, &columnValue); // Q^T
+---
+> 				(*A).SetRowValues(globalNumNode+j,1,&columnIndex, &columnValue); // Q^T
+788,794c684,686
+< 		ierr = (*A).GetInfo() ; cout << "ierr = " << rank << delim << ierr << endl ;
+< 		cout << "Start Assembling A,r=" << rank <<  endl ;
+< //		MPI_Barrier(MPI_COMM_WORLD) ;
+< 		ierr = (*A).AssemblyBegin() ; cout << "ierr = " << rank << delim << ierr << endl ;
+< 		ierr = (*A).AssemblyEnd() ; cout << "ierr = " << rank << delim << ierr << endl ;
+< 		cout << "After Assembling A: petsc assemble end, p,r: " << p << delim << rank << endl ;
+< 		*/
+---
+> 		(*A).GetInfo() ;
+> 		(*A).AssemblyBegin() ; (*A).AssemblyEnd() ;
+> //		cout << "Start Assembling A: petsc assemble end, p,r: " << p << delim << rank << endl ;
+813,814c705,706
+<       int columnIndex,rowIndex ;
+<       PetscScalar columnValue ;
+---
+> //      int *columnIndex ;
+> //      PetscScalar *columnValue ;
+841,912c733
+< 	  virtual void compute(const sequence &seq) { 
+< 	 /* 
+< 		int rank=Loci::MPI_rank ;
+< 		int p=Loci::MPI_processes ;
+< 
+<         // Get the number of local and global nodes.
+< //        int localNumNode=(*rbfNumBoundaryNode)[rank],globalNumNode=0 ;
+<         int globalNumNode = 0;
+<         for(unsigned int i=0;i<(*rbfNumBoundaryNode).size();++i) globalNumNode+=(*rbfNumBoundaryNode)[i] ;
+< 		  		
+< 		// include the polynomial coeff. computation
+< //		if (rank == p-1) { // last rank takes care of beta
+< //			localNumNode += 4; // d+1 = 4
+< //		}		
+< 		//globalNumNode+=4; // for beta (d+1)
+< 
+< 		// Compute the row offset for this process.
+<         int localStart=0 ; 
+<         for(int i=0;i<rank;++i) localStart+=(*rbfNumBoundaryNode)[i]  ;  // 3 coordinates
+< 
+< 		double distance = 0.;
+< //		int localEnd = localStart+localNumNode ;
+< 		double valueQ[4] ;
+< 		int ierr=0;
+< 		PetscScalar value=0.0 ;
+< //		cout << "localStart, localEnd, globalNumNode, sizeQ: " << localStart << ", " << localEnd << ", " << globalNumNode << ", " << (*Q).size() << endl ;
+< //		cout << "here ok?" << endl ;
+< 		// Q[row,col]=Q[3*row+col], Q=[0,1,2;3,4,5;...]
+< 		int counter=localStart ;
+< 		int I,I1,I2,J,J1,J2;
+< //		cout << "Start Assembling A inside the rule,r=" << rank << "RBF: r,a,rnfNr = " << *r << delim << *a << delim << *rbfNr << " localStart,localEnd,Qsize: " << localStart << delim << localEnd << delim << (*Q).size() << endl ;
+< 		sequence::const_iterator nodePtr ;
+< 		for(nodePtr=seq.begin();nodePtr!=seq.end();++nodePtr,++counter){	// Q[row,col]=Q[3*row+col], Q=[0,1,2;3,4,5;...]
+< 			I=3*counter; I1=3*counter+1; I2=3*counter+2 ;
+< //		for(int i=localStart;i<localEnd;++i){			
+< 			for(int j=0;j<globalNumNode;++j){
+< 				J=3*j; J1=3*j+1; J2=3*j+2 ;
+< //				cout << "r, I,J " << rank << delim << I << ", " << J << ": " ;
+< 				distance = pow((*Q)[I] - (*Q)[J], 2.) ; //)*((*Q)[I] - (*Q)[J]) ;
+< 				distance += pow((*Q)[I1] - (*Q)[J1], 2.) ; //*((*Q)[I1] - (*Q)[J1]) ;
+< 				distance += pow((*Q)[I2] - (*Q)[J2], 2.) ; //)*((*Q)[I2] - (*Q)[J2]) ;
+< 				if (distance < 0.0) cout << "distance < 0" << endl ;
+< 				distance = sqrt(distance) ;
+< 				if (!( ((*rbfNr) > 0 && (*rbfNr) < 9) && (distance/(*r) > 1.))) { // compact
+< 					value = radialBasisFunction(distance, *r, *a, *rbfNr) ;				
+< //					cout << "r, distance,value: " << rank << delim <<  distance << ", " << value << endl ;
+< 					rowIndex=counter; columnIndex=j; columnValue=value;
+< 					ierr=(*A).SetRowValues(rowIndex,1,&columnIndex,&columnValue) ; // i:row, j:column
+< 					if (ierr) cout << "r,ierr,rowIndex,columnIndex,columnValue,sizeQ: " << rank << delim << ierr << delim << rowIndex << delim << columnIndex << delim << columnValue << delim << (*Q).size() << endl ;
+< 				}
+< 			}			
+< //			cout << "after inserting phi_bb, r, counter" << rank << delim << counter << endl ;
+< 			valueQ[0] = 1.0; valueQ[1]=(*Q)[I]; valueQ[2]=(*Q)[I1]; valueQ[3]=(*Q)[I2];
+< 			for(int j=0; j<4; ++j) {
+< //				rowIndex=counter; columnIndex=globalNumNode-4+j; columnValue=valueQ[j] ;
+< 				rowIndex=counter; columnIndex=globalNumNode+j; columnValue=valueQ[j] ;
+< 				ierr = (*A).SetRowValues(rowIndex,1,&columnIndex,&columnValue) ; // i:row, j:column
+< //				rowIndex=globalNumNode-4+j; columnIndex=counter; 
+< 				rowIndex=globalNumNode+j; columnIndex=counter; 
+< 				(*A).SetRowValues(rowIndex,1,&columnIndex, &columnValue); // Q^T
+< 			}			
+< 		}
+< //		cout << "Start Assembling A: petsc assemble start, p,r: " << p << delim << rank << endl ;
+< //		MPI_Barrier(MPI_COMM_WORLD) ; cout << "After MPI_Barrier, r: " << rank << delim << ierr << endl ;
+< 		ierr = (*A).GetInfo() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< //		cout << "Start Assembling A,r=" << rank <<  endl ;
+< 		ierr = (*A).AssemblyBegin() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< 		ierr = (*A).AssemblyEnd() ; //cout << "ierr = " << rank << delim << ierr << endl ;
+< //		cout << "After Assembling A: petsc assemble end, p,r: " << p << delim << rank << endl ;
+< 		(*A).IsSymmetric() ;
+< 	 */ 
+< 	  }
+---
+> 	  virtual void compute(const sequence &seq) { }
+968,969c789
+< 		cout << "p,r: " << Loci::MPI_processes << delim << Loci::MPI_rank << delim << " solution time: " << endtime - starttime << " sec"  << endl ;
+< 		(*ksp).GetConvergedReason() ;
+---
+> 		cout << "p,r: " << Loci::MPI_processes << delim << Loci::MPI_rank << delim << " solved in " << endtime - starttime << " sec" << endl ;
+971c791
+< 		if (Loci::MPI_rank==0) cout << ", number of iterations: " << its << endl ;
+---
+> 		cout << "Petsc solver converged in " << its << " iterations" << endl ;
+1118d937
+< //
+1135,1140c954,959
+< 		name_store("rbfBoundaryNodeQ",Q) ;
+< 		name_store("rbfBoundaryNodeWeight",rbfWeight) ;
+< 		name_store("rbfR",r) ;
+< 		name_store("rbfA",a) ;
+< 		name_store("rbfNumber",rbfNr) ;
+< 		name_store("pos",pos) ;		
+---
+> 				name_store("rbfBoundaryNodeQ",Q) ;
+> 				name_store("rbfBoundaryNodeWeight",rbfWeight) ;
+> 				name_store("rbfR",r) ;
+> 				name_store("rbfA",a) ;
+> 				name_store("rbfNumber",rbfNr) ;
+> 				name_store("pos",pos) ;		
+1143,1147c962,966
+< 		input("rbfNumber, rbfR, rbfA");
+< 		input("pos");
+< 		input("rbfNumBoundaryNode");
+< 		input("rbfBoundaryNodeQ") ;
+< 		input("rbfBoundaryNodeWeight") ;
+---
+> 				input("rbfNumber, rbfR, rbfA");
+> 				input("pos");
+> 				input("rbfNumBoundaryNode");
+> 				input("rbfBoundaryNodeQ") ;
+> 				input("rbfBoundaryNodeWeight") ;
+1150c969
+<         constraint("pos") ; //internal nodes
+---
+>         constraint("pos") ; //internal nodes        
+1217c1036
+< 		cout << "p,r: Start Applying" << Loci::MPI_processes << delim << Loci::MPI_rank << endl ;
+---
+> 		cout << "Remeshing: p,r: Start Applying " << Loci::MPI_processes << delim << Loci::MPI_rank << endl ;
+1227,1272d1045
+<   // Rule to apply interpolation to the internal nodes
+<   class PETSCInternalNodeApplyDummy : public apply_rule<store<vect3d>,Loci::NullOp<vect3d> > {
+<     private:
+< 	  const_param<real> r, a ;
+< 	  const_param<int> rbfNr ;
+< 	  const_store<vect3d> pos ;
+< 	  const_param<vector<real> > Q ;
+< 	  const_param<vector<real> > rbfWeight ;
+< 	  const_param<vector<int> > rbfNumBoundaryNode ;
+< 	  store<vect3d> node_sStar ;
+<     private:
+< 	  int globalNumNode;
+<     public:
+< 
+<       // Define input and output.
+<       PETSCInternalNodeApplyDummy() {
+< 		name_store("rbfBoundaryNodeQ",Q) ;
+< 		name_store("rbfBoundaryNodeWeight",rbfWeight) ;
+< 		name_store("rbfR",r) ;
+< 		name_store("rbfA",a) ;
+< 		name_store("rbfNumber",rbfNr) ;
+< 		name_store("pos",pos) ;		
+<         name_store("rbfNumBoundaryNode",rbfNumBoundaryNode) ;
+<         name_store("node_sStar",node_sStar) ;
+< 		input("rbfNumber, rbfR, rbfA");
+< 		input("pos");
+< 		input("rbfNumBoundaryNode");
+< 		input("rbfBoundaryNodeQ") ;
+< 		input("rbfBoundaryNodeWeight") ;
+<         output("node_sStar") ;
+<         constraint("sStar_PETSCLinearSolver") ; //internal nodes
+<         constraint("pos") ; //internal nodes
+<         disable_threading() ;
+<       }
+< 	  
+< 	  // Loop over internal nodes and apply RBF interpolation
+<       //void calculate(Entity node) {
+<       //}
+< 
+<       // Assemble and solve.
+< 	  virtual void compute(const sequence &seq) {
+< 	  }	
+<   } ;
+< 
+<   register_rule<PETSCInternalNodeApplyDummy> registerPETSCInternalNodeApplyDummy ;
+< 

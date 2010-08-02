@@ -1,0 +1,112 @@
+$type CSDE1 param<real> ; // Young's modulus 1
+$type CSDE2 param<real> ; // Young's modulus 2
+$type CSDnu12 param<real> ; // Poisson ratio 12
+$type CSDnu21 param<real> ; // Poisson ratio 21
+$type CSDG12 param<real> ; // Shear modulus 12
+$type CSDrhoStructure param<real> ; // structure density
+$type CSDthicknessStructure param<real> ; // structure thickness
+$type CSDintegrationScheme param<int> ; // integrationScheme for the CSD-> 1:newmark, 2:generalized alpha
+$type CSDdelta param<real> ; // CSD convergence criteria for the inner iteration
+$type CSDswitchStiffening param<int> ; // 1: on, 2: off -> stiffening tangent stiffness matrix
+//$type CSDexcitationType param<int> ; // 0: plunging, 1: flapping <- not used
+$type CSDflappingType param<int> ; // 0: switch off, 1: sin, 2: cos, 3: 1-cos, 4: delay ( 1-exp(-4000*t^2))*sin
+$type CSDplungingType param<int> ; // 0: switch off, 1: sin, 2: cos, 3: 1-cos
+$type CSDfrequency param<real> ; // excitation frequency: ex. sin(2*pi*f*t) -> f (NOT omega!)
+$type CSDgenAlphaCoeff param<real> ; // alpha for generalized alpha time integration scheme
+$type CSDnewmarkGammaCoeff param<real> ; // Newmark beta coefficient1
+$type CSDnewmarkBetaCoeff param<real> ; // Newmark beta coefficient2
+$type CSDdampingCoeff1 param<real> ; // damping coefficient for the Rayleigh damping 1
+$type CSDdampingCoeff2 param<real> ; // damping coefficient for the Rayleigh damping 2
+$type CSDplungeAmplitudeX param<real> ; // plunge amplitude X
+$type CSDplungeAmplitudeY param<real> ; // plunge amplitude Y
+$type CSDplungeAmplitudeZ param<real> ; // plunge amplitude Z
+$type CSDflappingAmplitudeX param<real> ; // flapping amplitude X <- pitch, different coordinate system in CSD, x <- spanwise
+$type CSDflappingAmplitudeY param<real> ; // flapping amplitude Y <- flap, different coordinate system in CSD, y <- streamwise
+$type CSDflappingAmplitudeZ param<real> ; // flapping amplitude Z <- lag, , different coordinate system in CSD, z <- -gravity 
+$type CSDMeshFilename param<string> ; // CSD mesh filename
+$type CSDConnectivityFilename param<string> ; // CSD connectivity filename
+$type CSDBCFilename param<string> ; // CSD boundary conditions filename
+$type CSDstartingTimeStep param<int> ; // 
+$type CSDtipNode param<int> ; // Tip Node number inside CSD mesh
+$type CSDdimension param<int> ; // CSD solver dimension constraint 2 -> 2D, 3 -> 3D
+$type CSD2dSpanCenter param<real> ; // CSD solver dimension == 2D --> set the coordinate for the midspan point
+$type CSDYorigin param<real> ; // CSD mesh assumed to be a plate with its Y (height) coordinate being this value. Then when interpolating to&from CFD the difference between the top and bottom CFD surfaces can be eliminated
+
+$type CFDMaxTotalInnerIterations param<int> ; // Maximum allowed CFD iterations per time step
+
+$type FSICouplingMethod param<string> ; // parameter to turn on the FSI coupling
+$type FSIRBFr param<real> ; // FSI RBF interpolation r
+$type FSIRBFa param<real> ; // FSI RBF interpolation a
+$type FSIRBFnr param<int> ; // FSI RBF interpolation function nr
+$type FSIRBFMaxLinearSolverIterations param<int> ; // FSI RBF interpolation number of maximum iterations for the linear solver
+$type FSIRBFTolerance param<real> ; // FSI RBF interpolation tolerance for the linear solver
+$type FSICSD2CFDRBFr param<real> ; // FSI CSD2CFD RBF interpolation r
+$type FSICSD2CFDRBFa param<real> ; // FSI CSD2CFD RBF interpolation a
+$type FSICSD2CFDRBFnr param<int> ; // FSI CSD2CFD RBF interpolation function nr
+$type FSICSD2CFDRBFMaxLinearSolverIterations param<int> ; // FSI CSD2CFD RBF interpolation number of maximum iterations for the linear solver
+$type FSICSD2CFDRBFTolerance param<real> ; // FSI RBF interpolation tolerance for the linear solver
+$type FSIIterationTolerance param<real> ; // FSI inner iteration tolerance
+$type FSIIterationMinimum param<int> ; // FSI minimum number of inner iterations 
+$type maxIterationsPerFSI param<int> ;
+$type itfsi param<int> ; // FSI inner iteration counter
+$type itfsi_ic param<int> ; // FSI inner iteration counter initializer
+$type FSICoupling Constraint ;
+$type FSINLAMS Constraint ;
+$type FSIEULERBEAM Constraint ;
+$type FSI3DCONT Constraint ;
+$type FSIPRESCRIBED Constraint ;
+
+  
+$type CSDNumberOfNodes param<int>;
+$type CSDNumberOfElements param<int> ;
+$type CSDNumberOfBCs param<int> ;
+$type CSDnodes_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD initial 
+$type CSDnodes blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD current x
+$type CSDnodes_it blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD current x
+$type CSDnodesDisp_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD initial generalized displacements
+$type CSDnodesDisp blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD current generalized displacements	
+$type CSDnodesVel_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD initial generalized dot(displacements)
+$type CSDnodesVel blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD current generalized dot(displacements)
+$type CSDnodesAcc_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD initial generalized ddot(displacements) 
+$type CSDnodesAcc blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD current generalized ddot(displacements)
+$type CSDConnectivity blackbox<ublas::matrix<int,ublas::column_major> > ; // CSD connectivity matrix
+$type	CSDBCdof param<vector<int> > ;
+$type	CSDBCZeroConstraint param<vector<real> > ;
+
+$type CSDdisplacementsStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD displacements from NLAMS
+$type CSDdisplacementsOld blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD displacements from NLAMS, previous iteration
+$type CSDdisplacementsOldStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD displacements from NLAMS, previous iteration
+$type CSDdisplacementsOld_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD displacements from NLAMS, previous iteration
+$type CSDnodesDispStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD generalized displacements from NLAMS
+$type CSDnodesVelStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD generalized dot(displacements) from NLAMS
+$type CSDnodesAccStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CSD generalized ddot(displacements) from NLAMS
+$type CSDForce blackbox<ublas::matrix<real,ublas::column_major> > ; // Forces from CFD to CSD
+$type CSDForcePreStar blackbox<ublas::matrix<real,ublas::column_major> > ; // CFD2CSD Force at the previous fsi iteration
+$type CSDForcePre blackbox<ublas::matrix<real,ublas::column_major> > ; // CFD2CSD Force at the previous fsi iteration
+$type CSDForcePre_ic blackbox<ublas::matrix<real,ublas::column_major> > ; // CFD2CSD Force at the previous fsi iteration initialization
+$type CSDnodesSysStar blackbox<boost::multi_array<real,4> > ; // Nodal coordinates of each elements: from NLAMS
+$type CSDnodesSys blackbox<boost::multi_array<real,4> > ; // Nodal coordinates of each elements
+$type CSDnodesSys_ic blackbox<boost::multi_array<real,4> > ; // Nodal coordinates of each elements initialization
+$type CSDRBFweights blackbox<ublas::matrix<real,ublas::row_major> > ;
+	
+// EULERBEAM
+$type CSDEulerXstart param<real> ;
+$type CSDEulerXend param<real> ;
+$type CSDEulerChord param<real> ;
+$type CSDEulerXnum param<int> ;
+$type CSDEulerAxis param<int> ; // beam direction: 0->x, 1->y, 2->z, displacement probably always in y direction
+$type CSDEulerBeamDirection param<int> ;
+$type CSDEulerSpanDirection param<int> ;
+$type CSDxStar blackbox<ublas::vector<real> > ;
+$type CSDxdotStar blackbox<ublas::vector<real> > ;
+$type CSDxddotStar blackbox<ublas::vector<real> > ;
+$type CSDx_ic blackbox<ublas::vector<real> > ;
+$type CSDxdot_ic blackbox<ublas::vector<real> > ;
+$type CSDxddot_ic blackbox<ublas::vector<real> > ;
+$type CSDx blackbox<ublas::vector<real> > ;
+$type CSDxdot blackbox<ublas::vector<real> > ;
+$type CSDxddot blackbox<ublas::vector<real> > ;
+$type CSDForcePreEuler_ic blackbox<ublas::vector<real> > ;
+$type CSDForcePreEuler blackbox<ublas::vector<real> > ;
+$type CSDForcePreEulerStar blackbox<ublas::vector<real> > ;
+

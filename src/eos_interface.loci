@@ -1,0 +1,354 @@
+#include <Loci.h>
+#include "sciTypes.h"
+#include "eos.h"
+#include "PerfectGas.h"
+#include "reaction.h"
+#include "name_var.h"
+#include "qvi.h"
+$include "chem.lh"
+
+namespace streamUns {
+  using namespace fluidPhysics ;
+
+  $type chemistry_model param<name_var> ;
+
+  $rule default(chemistry_model),
+    comments("Select the thermodynamic and chemistry model used") 
+  {
+    $chemistry_model.name = "air_1s0r" ;
+  } 
+
+  $type eos_type param<name_var> ;
+
+  $rule default(eos_type),
+    comments("Select the EoS to use.  Thermally perfect gases use 'gas', other EoS's such as fluid may be available when modules are loaded.  For example, 'fluid' for real fluids.") {
+    $eos_type.name = "gas" ;
+  }
+    
+  $type thermodynamic_model param<name_var> ;
+
+  $rule default(thermodynamic_model),
+    comments("Define type of thermodynamic model used.  Currently the choices are curve fit and vibrational equilibrium.  'adaptive' allows the code to select the model based on what is specified in the thermodynamic database.") 
+  {
+    $thermodynamic_model.name = "adaptive" ;
+  } 
+
+
+  chemistry_db read_chemistry_db(string filename,const chemistry_db &defaults) {
+    string filedata ;
+    if(Loci::MPI_rank == 0) {
+      ifstream cdf(filename.c_str(),ios::in) ;
+      if(!cdf.fail()) {
+        char c ;
+        while(cdf.get(c)) 
+          filedata+= c ;
+        cdf.close() ;
+      }
+    }
+    int sz = filedata.size() ;
+    MPI_Bcast(&sz,1,MPI_INT,0,MPI_COMM_WORLD) ;
+    char *buf = new char[sz] ;
+    if(Loci::MPI_rank==0) {
+      for(int i=0;i<sz;++i)
+        buf[i] = filedata[i] ;
+    }
+    MPI_Bcast(buf,sz,MPI_CHAR,0,MPI_COMM_WORLD) ;
+    if(Loci::MPI_rank!=0) {
+      filedata = "" ;
+      for(int i=0;i<sz;++i)
+        filedata+= buf[i] ;
+    }
+
+    istringstream iss(filedata) ;
+
+    chemistry_db cdb ;
+    cdb.Input(iss,defaults) ;
+    return cdb ;
+  }    
+
+  chemistry_db read_chemistry_model(string mdl) {
+    string fname = mdl + ".mdl" ;
+    string dbase_file ;
+    const char *base = 0 ;
+
+    if(Loci::MPI_rank == 0) {
+      base = getenv("CHEMISTRY_DATABASE") ;
+      if(base == NULL) {
+        cerr << "Warning: CHEMISTRY_DATABASE environment variable not defined"
+             << endl ;
+        base = "./" ;
+      }
+
+      // Set up default database path
+      char dbname[512] ;
+      sprintf(dbname,"%s/data_base/chemistry",base) ;
+      dbase_file = string(dbname) ;
+
+      ifstream chemin(fname.c_str(),ios::in) ;
+      if(chemin.fail()) {
+        fname = string(base)+"/data_base/models/" + mdl + ".mdl";
+        ifstream chemin(fname.c_str(),ios::in) ;
+        if(chemin.fail()) {
+          cerr << "can't find model '"
+               << mdl <<"' looked for file '"
+               << fname << "' with no luck." << endl ;
+          Loci::Abort() ;
+        } 
+      } else {
+        cout << "Using model from local directory, filename = "
+             << fname << endl ;
+      }
+    }
+
+    chemistry_db dummy ; // empty chemistry database for default defaults
+    chemistry_db cdb_defaults = read_chemistry_db(dbase_file,dummy) ;
+    
+    chemistry_db cdb = read_chemistry_db(fname,cdb_defaults) ;
+
+    cdb.removeM() ; // process with m-body reactions
+    return cdb ;
+  }
+
+
+  $type idealGasSimulation Constraint ;
+  $type imperfectGasSimulation Constraint ;
+  $type singleSpeciesSimulation  Constraint ;
+  $type multiComponentSimulation Constraint ;
+  $type reactionMechanismSimulation Constraint ;
+
+  $rule constraint(singleSpeciesSimulation,multiComponentSimulation,
+                   reactionMechanismSimulation,idealGasSimulation,
+                   imperfectGasSimulation
+                   <-chemistry_model) {
+    $idealGasSimulation = EMPTY ;
+    $imperfectGasSimulation = ~EMPTY ;
+    $singleSpeciesSimulation = EMPTY ;
+    $multiComponentSimulation = ~EMPTY ;
+    $reactionMechanismSimulation = ~EMPTY ;
+    string mdl = $chemistry_model.name ;
+    chemistry_db cdb = read_chemistry_model(mdl) ;
+    if(cdb.species.numSpecies() == 1) {
+      $singleSpeciesSimulation = ~EMPTY ;
+      $multiComponentSimulation = EMPTY ;
+      $reactionMechanismSimulation = EMPTY ;
+      const options_list &ol = cdb.species.getSpeciesOption(0) ;
+      if(!ol.optionExists("cp") && !ol.optionExists("theta_v") &&
+         !ol.optionExists("eos")) {
+        $idealGasSimulation = ~EMPTY ;
+        $imperfectGasSimulation = EMPTY ;
+      }
+      
+    }
+    if(cdb.reactions.numReactions() == 0)
+      $reactionMechanismSimulation = EMPTY ;
+  }
+
+  $type eos_repository blackbox<EOSFactory> ;
+
+  $rule unit(eos_repository),constraint(UNIVERSE) {
+  }
+
+  $type thermallyPerfectPriority param<int> ;
+  $rule singleton(thermallyPerfectPriority),constraint(UNIVERSE) {
+    $thermallyPerfectPriority = 0 ;
+  }
+  
+  $rule apply(eos_repository<-thermallyPerfectPriority)[Loci::NullOp],
+    prelude {
+    $eos_repository->insertEOS(EoSPtr(new ThermallyPerfectEOS),
+                               "gas",*$thermallyPerfectPriority) ;
+  } ;
+
+  class read_chem : public singleton_rule {
+    const_param<name_var> cmodel ;
+    const_param<std::string> tmodel ;
+    const_param<name_var> thermo_model ;
+    const_param<name_var> eos_type ;
+    const_blackbox<EOSFactory> eos_repository ;
+    param<EOS> eos ;
+    param<reaction> reactor ;
+  public:
+    read_chem() ;
+    virtual void compute( const sequence &seq) ;
+  } ;
+
+  read_chem::read_chem() {
+    name_store("chemistry_model",cmodel) ;
+    name_store("turbulence_model",tmodel) ;
+    name_store("thermodynamic_model",thermo_model) ;
+    name_store("eos_type",eos_type) ;
+    name_store("eos_repository",eos_repository) ;
+    name_store("eos",eos) ;
+    name_store("reactor",reactor) ;
+    input("chemistry_model") ;
+    input("turbulence_model") ;
+    input("thermodynamic_model") ;
+    input("eos_type") ;
+    input("eos_repository") ;
+    output("eos,reactor") ;
+  }
+
+  void read_chem::compute(const sequence &seq) {
+    string mdl = (*cmodel).name ;
+    chemistry_db cdb = read_chemistry_model(mdl) ;
+    if(Loci::MPI_rank==0)
+      cdb.Print(cout) ;
+
+    // Old version.
+    //EoSPtr e = eos_repository->getEOS(eos_type->name) ;
+    // Old version.
+
+    // New version.
+    EoSPtr e = 0 ;
+    if(eos_type->name == "default")
+      e = eos_repository->getDefaultEOS() ;
+    else
+      e = eos_repository->getEOS(eos_type->name) ;
+    // New version.
+
+    if(e == 0) {
+      if(Loci::MPI_rank == 0) {
+        cerr << "Unable to find EoS named " << eos_type->name
+             << ", check eos_type setting in vars file." << endl ;
+      }
+      Loci::Abort(); 
+    }
+    *eos = EOS(e) ;
+    eos->initialize(cdb.species,thermo_model->name) ;
+
+    reactor->initialize(*eos,cdb.reactions,cdb.species) ;
+
+    if(Loci::MPI_rank==0)
+      cout << "Using chemistry model = " << mdl << endl ;
+
+  }
+
+  register_rule<read_chem>   register_read_chem ;
+
+  //The following rule gets state variable (eos_state) and species energy
+  $type eos_state store<EOS::State> ;
+  $type eos_mixture_state storeVec<real> ;
+  $type hint storeVec<float> ;
+  $type hint_n storeVec<float> ;
+  $rule pointwise(eos_state{n,it},eos_mixture_state{n,it},hint{n,it}<-eos{n,it},
+    qvi{n,it},qp{n,it},hint_n{n,it},Pambient{n,it}),constraint(qp{n,it}),
+    inplace(hint{n,it}|hint_n{n,it}),prelude {
+    $eos_mixture_state{n,it}.setVecSize($eos{n,it}->mixtureStateSize()) ;
+  } compute {
+    //state variables are assigned to eos_state, and species_energy are 
+    //assigned with the values since it is passed by the pointer
+    $eos_state{n,it} = primitive_vector::getState($qp{n,it}, $Pambient{n,it},
+                                                  $qvi{n,it},$eos{n,it},
+                                                  $eos_mixture_state{n,it},
+                                                  $hint_n{n,it}) ;
+    $eos{n,it}.getHint($hint{n,it},$eos_state{n,it},$eos_mixture_state{n,it}) ;
+  }   
+
+  $type species_energy storeVec<real> ;
+  $rule pointwise(species_energy<-eos,eos_state,eos_mixture_state),
+    prelude {
+    $species_energy.setVecSize($eos->numSpecies()) ;
+  } compute {
+    $eos.get_ei($eos_state,$eos_mixture_state,$species_energy) ;
+  }
+
+  $type species_cv storeVec<real> ;
+  $rule pointwise(species_cv<-eos,eos_state,eos_mixture_state),
+    prelude {
+    $species_cv.setVecSize($eos->numSpecies()) ;
+  } compute {
+    $eos.get_cvi($eos_state,$eos_mixture_state,$species_cv) ;
+  }
+
+  $type dreidri storeVec<real> ;
+  $rule pointwise(dreidri<-eos,eos_state,eos_mixture_state),
+    prelude {
+    $dreidri.setVecSize($eos->numSpecies()) ;
+  } compute {
+    $eos.dreidri($dreidri,$eos_state,$eos_mixture_state) ;
+  }
+
+  $type dreidP store<real> ;
+  $rule pointwise(dreidP<-eos,eos_state,eos_mixture_state)
+  {
+    $dreidP = $eos.dreidP($eos_state,$eos_mixture_state) ;
+  }
+
+  // These rules conflict with Loci-Stream, so comment out.
+
+  //get temperature in the cell
+  //$rule pointwise(temperature<-eos_state) {
+  //  $temperature = $eos_state.temperature() ;
+  //}
+
+
+  //get density in the cell
+  //$rule pointwise(rho<-eos_state) {
+  //  $rho = $eos_state.density() ;
+  //}
+
+  //get pressure in the cell
+
+  //$rule pointwise(pressure<-eos_state) {
+  //  $pressure = $eos_state.pressure() ;
+  //}
+
+  //get soundSpeed in the cell
+  $type soundSpeed store<real> ;
+  $rule pointwise(soundSpeed<-eos_state) {
+    $soundSpeed = $eos_state.soundSpeed() ;
+  }
+
+  $type cp store<real> ;
+  $rule pointwise(cp<-eos_state) {
+    $cp = $eos_state.cpt() ;
+  }
+
+  $type vol store<real> ;
+  $rule pointwise(cp<-(cr,cl)->(eos_state,vol)) {
+    const real cptr=$cr->$eos_state.cpt() ;
+    const real cptl=$cl->$eos_state.cpt() ;
+    $cp=($cl->$vol*cptr+$cr->$vol*cptl)/
+      ($cl->$vol+$cr->$vol) ;
+  }
+
+  $rule pointwise(cp<-ci->eos_state) {
+    $cp=$ci->$eos_state.cpt() ;
+  }
+
+  $type e_internal store<real> ;
+  $rule pointwise(e_internal<-eos_state) {
+    $e_internal = $eos_state.energy() ;
+  }
+
+//$rule pointwise(dTdq<-eos,qvi,eos_state,eos_mixture_state),
+//  prelude {
+//  $dTdq.setVecSize($qvi->vectorSize()) ;
+//} compute {
+//  primitive_vector::dTdq($eos,$eos_state,$eos_mixture_state,$qvi,$dTdq) ;
+//}
+
+  $type speciesEnthalpy storeVec<real> ;
+  $rule pointwise(speciesEnthalpy<-eos,eos_state,eos_mixture_state),
+    prelude {
+    $speciesEnthalpy.setVecSize($eos->numSpecies()) ;
+  } compute {
+    const int ns = $eos.numSpecies() ;
+    for(int i=0;i<ns;++i)
+      $speciesEnthalpy[i] = $eos.speciesEnthalpy(i,$eos_state,$eos_mixture_state) ;
+  }
+
+  $type speciesMolecularMass param<std::vector<real> > ;
+  $rule singleton(speciesMolecularMass<-eos) {
+    std::vector<real> smm ;
+    for(int i=0;i<$*eos->numSpecies();++i)
+      smm.push_back($*eos->speciesMolecularMass(i)) ;
+    $speciesMolecularMass = smm ;
+  }
+
+  $type defaultMixtureFraction param<std::vector<real> > ;
+  $rule singleton(defaultMixtureFraction<-eos) {
+    $defaultMixtureFraction = $*eos->getMixtureFractions() ;
+  }
+
+}

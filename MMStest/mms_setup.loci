@@ -1,0 +1,279 @@
+#include <Loci.h>
+#include <eos.h>
+using fluidPhysics::EOS ;
+#include <qvi.h>
+#include <readGrid.h>
+
+$include "chem.lh"
+$include "mms.lh"
+
+// Setup for prescibing the mms variables.
+namespace streamUns {
+
+  // This bit of code allows us to add a mms option to the boundary conditions
+  class mms_boundary_flag_check : public BC_Check {
+    std::string error_message ;
+  public:
+    std::string BoundaryConditions() {
+      string s("incompressibleInlet,subsonicInlet,supersonicInlet,") ;
+      s+="fixedPressureOutlet,extrapolatedPressureOutlet" ;
+      return s ;
+    }
+    std::string VariablesChecked(fact_db &facts) { return "mms" ; }
+    bool CheckOptions(const options_list &bc_options,Loci::fact_db&) {
+      error_message = "" ;
+      return true ;
+    }
+    
+    std::ostream &ErrorMessage(std::ostream &s) {
+      s << error_message << endl ;
+      return s ;
+    }
+  } ;
+
+  register_BC<mms_boundary_flag_check> register_mms_boundary_flag_check ;
+  
+  // Add source term to continuity equation. Here we are adding all the species
+  // continuity equations, which should work for both incompressible/compressible
+  // flow with no species transport and compressible flows with species transport.
+  $type pPrime_B store<real> ;
+  $rule apply(pPrime_B<-massGeneralSrc(cellcenter),numSpecies,vol)[Loci::Summation] {
+    for(int i=0;i<$numSpecies;++i)
+      $pPrime_B+=$massGeneralSrc(cellcenter)[i]*$vol ;
+  }
+  
+  // Add source term to momentum equation.
+  $type vSourceTerm store<vect3d> ;
+  $rule apply(vSourceTerm<-momentumGeneralSrc(cellcenter),vol)[Loci::Summation] {
+    vect3d tmp=$vol*$momentumGeneralSrc(cellcenter) ;
+    $vSourceTerm+=$vol*$momentumGeneralSrc(cellcenter) ;
+  }
+
+  // Integrate kw turbulence model source term over general cell
+  $rule apply(sst_src<-rkGeneralSrc(cellcenter),
+                       rwGeneralSrc(cellcenter),vol)[Loci::Summation] {
+    $sst_src[0] += $rkGeneralSrc(cellcenter)*$vol ;
+    $sst_src[1] += $rwGeneralSrc(cellcenter)*$vol ;
+  }
+
+  // Provide boundary values for pressure for compressible flows.
+  $type p_f store<real> ;
+  $rule pointwise(p_f<-mmsPressure(facecenter)),
+  constraint(ref->mms_BCoption,compressibleFlow) {
+    $p_f=$mmsPressure(facecenter) ;
+  }
+
+  // Provide boundary values for velocity.
+  $type v_f store<vect3d> ;
+  $rule pointwise(v_f<-mmsVelocity(facecenter)),
+    constraint(ref->mms_BCoption) {
+    $v_f=$mmsVelocity(facecenter) ;
+  }
+
+  // Provide boundary values for temperature for compressible flows.
+  $rule pointwise(temperature_f<-mmsPressure(facecenter),mmsRho(facecenter),eos),
+  constraint(ref->mms_BCoption,compressibleFlow) {
+    EOS::State s = $eos.State_from_rho_p($mmsRho(facecenter),
+                                         $mmsPressure(facecenter)) ;
+    $temperature_f = s.temperature() ;
+  }
+
+  // Provide boundary values for mixture
+  $rule pointwise(mms::mixture_f<-mmsRho(facecenter),numSpecies),
+    constraint(ref->mms_BCoption), prelude {
+    $mixture_f.setVecSize(*$numSpecies) ;
+  } compute {
+    real rho = 0 ;
+    for(int i=0;i<$numSpecies;++i)
+      rho += $mmsRho(facecenter)[i] ;
+    for(int i=0;i<$numSpecies;++i)
+      $mixture_f[i] = $mmsRho(facecenter)[i]/rho ;
+  }
+
+  // Provide boundary values for spalart allmaras turbulence variable
+  $rule pointwise(mms::nu_t_f<-mms_nu_t(facecenter)),
+      constraint(ref->mms_BCoption) {
+    $nu_t_f = $mms_nu_t(facecenter) ;
+  }
+
+  // Provide turbulent kintentic energy at boundary
+  $rule pointwise(mms::k_f<-mms_k(facecenter)),
+    constraint(ref->mms_BCoption) {
+    $k_f = $mms_k(facecenter) ;
+  }
+
+  // Provide turbulent omega at boundary
+  $rule pointwise(mms::w_f<-mms_w(facecenter)),
+    constraint(ref->mms_BCoption) {
+    $w_f = $mms_w(facecenter) ;
+  }
+
+  // Compute mms error
+  $type mmsMassResidual store<real> ;
+  $type mmsMomentXResidual store<real> ;
+  $type mmsMomentYResidual store<real> ;
+  $type mmsMomentZResidual store<real> ;
+  $type mmsEnergyResidual store<real> ;
+
+  // Here we compute the error between the computed conservative variables and
+  // the predicted conservative variables
+  $type rho store<real> ;
+  $rule pointwise(mmsMassResidual<-rho,mmsRho(cellcenter),numSpecies) {
+    real mmsrho = 0 ;
+    for(int i=0;i<$numSpecies;++i)
+      mmsrho += $mmsRho(cellcenter)[i] ;
+    $mmsMassResidual = $rho-mmsrho ;
+  }
+
+  $type v store<vect3d> ;
+  $rule pointwise(mmsMomentXResidual,mmsMomentYResidual,mmsMomentZResidual<-rho,v,
+  mmsRho(cellcenter),mmsVelocity(cellcenter),numSpecies) {
+    real mmsrho = 0 ;
+    for(int i=0;i<$numSpecies;++i)
+      mmsrho += $mmsRho(cellcenter)[i] ;
+    vect3d resid = $rho*$v - mmsrho*$mmsVelocity(cellcenter) ;
+    $mmsMomentXResidual = resid.x ;
+    $mmsMomentYResidual = resid.y ;
+    $mmsMomentZResidual = resid.z ;
+  }
+
+  $rule pointwise(mmsEnergyResidual),constraint(incompressibleFlow,geom_cells) {
+    $mmsEnergyResidual = 0 ;
+  }
+
+  $rule pointwise(mmsEnergyResidual<-e_internal,u,rho,mmsRho(cellcenter),mmsPressure(cellcenter),
+  mmsVelocity(cellcenter),eos),constraint(compressibleFlow,geom_cells) {
+    EOS::State s = $eos.State_from_rho_p($mmsRho(cellcenter),$mmsPressure(cellcenter)) ;
+    real re0_mms = s.density()*(s.energy()+.5*dot($u,$u)) ;
+    real re0_solver = $rho*($e_internal+.5*dot($u,$u)) ;
+    $mmsEnergyResidual = re0_solver - re0_mms ;
+  }
+
+  $type mms_rk_Residual store<real> ;
+  $type mms_rw_Residual store<real> ;
+
+  $rule pointwise(mms_rk_Residual<-rho,k,mms_k(cellcenter),mmsRho(cellcenter),numSpecies) {
+    real mmsrho = 0 ;
+    for(int i=0;i<$numSpecies;++i)
+      mmsrho += $mmsRho(cellcenter)[i] ;
+    $mms_rk_Residual = $rho*$k - $mms_k(cellcenter)*mmsrho ;
+  }
+
+  $type omega store<real> ;
+  $rule pointwise(mms_rw_Residual<-rho,omega,mms_w(cellcenter),mmsRho(cellcenter),numSpecies) {
+    real mmsrho = 0 ;
+    for(int i=0;i<$numSpecies;++i)
+      mmsrho += $mmsRho(cellcenter)[i] ;
+    $mms_rw_Residual = $rho*$omega - $mms_w(cellcenter)*mmsrho ;
+  }
+
+  $rule singleton(OUTPUT<-L2Norm(mmsMassResidual),L2Norm(mmsMomentXResidual),
+  L2Norm(mmsMomentYResidual),L2Norm(mmsMomentZResidual),L2Norm(mmsEnergyResidual),
+  modelName),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+
+    string fname = $modelName+"_meanl2.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+    ofile << $L2Norm(mmsMassResidual) << ' '
+          << $L2Norm(mmsMomentXResidual) << ' '
+          << $L2Norm(mmsMomentYResidual) << ' '
+          << $L2Norm(mmsMomentZResidual) << ' '
+          << $L2Norm(mmsEnergyResidual) << endl ;
+  }
+
+  $rule singleton(OUTPUT<-L1Norm(mmsMassResidual),L1Norm(mmsMomentXResidual),
+  L1Norm(mmsMomentYResidual),L1Norm(mmsMomentZResidual),L1Norm(mmsEnergyResidual),
+  modelName),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+    string fname = $modelName+"_meanl1.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+    ofile << $L1Norm(mmsMassResidual) << ' '
+          << $L1Norm(mmsMomentXResidual) << ' '
+          << $L1Norm(mmsMomentYResidual) << ' '
+          << $L1Norm(mmsMomentZResidual) << ' '
+          << $L1Norm(mmsEnergyResidual) << endl ;
+  }
+
+  $rule singleton(OUTPUT<-LinfNorm(mmsMassResidual),LinfNorm(mmsMomentXResidual),
+  LinfNorm(mmsMomentYResidual),LinfNorm(mmsMomentZResidual),LinfNorm(mmsEnergyResidual),
+  modelName),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+
+    string fname = $modelName+"_meanlinf.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+    ofile << $LinfNorm(mmsMassResidual) << ' '
+          << $LinfNorm(mmsMomentXResidual) << ' '
+          << $LinfNorm(mmsMomentYResidual) << ' '
+          << $LinfNorm(mmsMomentZResidual) << ' '
+          << $LinfNorm(mmsEnergyResidual) << endl ;
+  }
+
+  $rule singleton(OUTPUT<-L2Norm(mms_rk_Residual),L2Norm(mms_rw_Residual),
+  modelName),constraint(turbulentFlow,k,omega),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+    string fname = $modelName+"_kwl2.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+
+    ofile << $L2Norm(mms_rk_Residual) << ' '
+          << $L2Norm(mms_rw_Residual) << endl ;
+  }
+
+  $rule singleton(OUTPUT<-L1Norm(mms_rk_Residual),L1Norm(mms_rw_Residual),
+  modelName),constraint(turbulentFlow,k,omega),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+    string fname = $modelName+"_kwl1.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+
+    ofile << $L1Norm(mms_rk_Residual) << ' '
+          << $L1Norm(mms_rw_Residual) << endl ;
+  }
+
+  $rule singleton(OUTPUT<-LinfNorm(mms_rk_Residual),LinfNorm(mms_rw_Residual),
+  modelName),constraint(turbulentFlow,k,omega),conditional(do_plot) {
+    if(Loci::MPI_rank != 0) return ;
+    string fname = $modelName+"_kwlinf.dat" ;
+    ofstream ofile(fname.c_str(),ios::out) ;
+    ofile.precision(16) ;
+
+    ofile << $LinfNorm(mms_rk_Residual) << ' '
+          << $LinfNorm(mms_rw_Residual) << endl ;
+  }
+
+  $type X store<double> ;
+  $type ToFloat(X) store<float> ;
+  $rule pointwise(ToFloat(X)<-X) {
+    $ToFloat(X) = $X ;
+  }
+
+  $type X store<vector3d<double> > ;
+  $type ToFloatV(X) store<vector3d<float> > ;
+  $rule pointwise(ToFloatV(X)<-X) {
+    $ToFloatV(X) = vector3d<float>($X.x,$X.y,$X.z) ;
+  }
+
+  $type X storeVec<double> ;
+  $type ToFloatVec(X) store<float> ;
+  $rule pointwise(ToFloatVec(X)<-X) {
+    int vs = $*X.vecSize() ;
+    double sum = 0 ;
+    for(int i=0;i<vs;++i)
+      sum += $X[i] ;
+    $ToFloatVec(X) = sum ;
+  }
+  
+//OUTPUT_SCALAR("cell2nodeMaxMag(mmsMassResidual)",mmsMassError) ;
+//OUTPUT_SCALAR("cell2nodeMaxMag(mmsMomentXResidual)",mmsMomentXError) ;
+//OUTPUT_SCALAR("cell2nodeMaxMag(mmsMomentYResidual)",mmsMomentYError) ;
+//OUTPUT_SCALAR("cell2nodeMaxMag(mmsMomentZResidual)",mmsMomentZError) ;
+//OUTPUT_SCALAR("cell2nodeMaxMag(mmsEnergyResidual)",mmsEnergyError) ;
+
+//OUTPUT_SCALAR("ToFloat(energyGeneralSrc(pos))",mmsEnergySrc) ;
+//OUTPUT_SCALAR("ToFloatVec(massGeneralSrc(pos))",mmsMassSrc) ;
+//OUTPUT_VECTOR("ToFloatV(momentumGeneralSrc(pos))",mmsMomentSrc) ;
+  
+}

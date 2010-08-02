@@ -1,0 +1,21 @@
+// Laminar viscosity and thermal conductivity. Data consists of polynomial
+// curve fits at specified pressure. This data is very crude right now
+// since we just use Nitrogen as a tag species.
+
+N2 = <
+  mu=[
+
+  p(0.0),100.0,poly(3.85132e-06,3.06538e-08,0.0,0.0),2000.0,
+    poly(6.5159e-05,0.0,0.0,0.0),5000.0,
+  p(2.5e+07),100.0,poly(1.14166e-04,-2.41995e-08,0.0,0.0),2000.0,
+    poly(6.5767e-05,0.0,0.0,0.0),5000.0],
+
+  k=[
+
+  p(0.0),100.0,poly(0.00462379,5.36031e-05,0.0,0.0),2000.0,
+    poly(1.1183e-01,0.0,0.0,0.0),5000.0,
+  p(2.5e+07),100.0,poly(0.1,0.0,0.0,0.0),2000.0,
+    poly(0.1,0.0,0.0,0.0),5000.0]
+
+>
+

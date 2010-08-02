@@ -1,0 +1,140 @@
+Breakdown of the compressible/multi-species SIMPLE algorithm with Euler time
+integration
+
+Nomenclature:
+  a) n: time-step iteration variable
+  b) it: iteration variable within the time-step
+  c) is: iteration variable within the species sub-loop
+
+Algorithm:
+
+  // Compute density initial condition.
+  rho_ic=f(t_ic,p_ic,y_ic) ; h_ic=f(v_ic,T_ic,y_ic) ;
+
+  // Initialize time-step 0 values.
+  rho{n=0}=rho_ic ; v{n=0}=v_ic ; p{n=0}=p_ic ; temperature{n=0}=T_ic ;
+  h{n=0}=h_ic ; y{n=0}=y_ic ;
+
+  // Initialize time-step 0 face mass flux.
+  massFlux{n=0}=f(rho_ic,v_ic,geometry{n=0}) ;
+
+  for(int n=0;n<nMax;++n){
+
+    // Here we have the state rho{n},v{n},p{n},temperature{n},h{n},y{n},
+    // massFlux{n}.
+
+    // Initialize iteration 0 values.
+    rho{n,it=0}=rho{n} ; v{n,it=0}=v{n} ; p{n,it=0}=p{n} ;
+    temperature{n,it=0}=temperature{n} ; h{n,it=0}=h{n} ; y{n,it=0}=y{n} ;
+
+    // Initialize iteration 0 face mass flux.
+    massFlux{n,it=0}=massFlux{n} ;
+
+    for(int it=0;it<itMax;++it){
+
+      // Here we have the state rho{n,it},v{n,it},p{n,it},temperature{n,it},
+      // h{n,it},y{n,it},massFlux{n,it}.
+
+      // Compute the stage 0 contribution to the face mass flux for the
+      // current iteration(it). This is only done for interior faces.
+      stage0MassFlux{n,it}=f(massFlux{n,it},rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the momentum equation to produce vStar. During the
+      // assembly process we compute and save the main coefficient of the
+      // discrete equation for each cell.
+      mainCoefficient{n,it}=diagonal coefficient of discrete equation ;
+      vStar{n,it}=f(rho{n},v{n},rho{n,it},v{n,it},p{n,it},massFlux{n,it}) ;
+
+      // Compute the face pressure correction coefficient.
+      ppCoefficient{n,it}=f(rho{n,it},mainCoefficient{n,it},geometry{n,it}) ;
+
+      // Compute the stage 1 mass flux for the current iteration(it).
+      stage1MassFlux{n,it}(interior)=f(rho{n,it},vStar(n,it},
+        ppCoefficient{n,it},p{n,it},pGradient{n,it},stage0MassFlux{n,it}) ;
+      stage1MassFlux{n,it}(boundary)=f(rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the pressure-correction equation.
+      pp{n,it}=f(ppCoefficient{n,it},stage1MassFlux{n,it},geometry{n,it}) ;
+
+      // Correct the cell velocities.
+      vCorrected{n,it}=f(vStar{n,it},pp{n,it},mainCoefficient{n,it}) ;
+
+      // Correct the cell pressures.
+      pCorrected{n,it}=f(p{n,it},pp{n,it}) ;
+
+      // Correct the face mass flux.
+      massFluxCorrected{n,it}=f(stage1MassFlux{n,it},ppCoefficient{n,it},
+        pp{n,it}) ;
+
+      // Assemble and solve the energy equation for the new total enthalpy.
+      hStar{n,it}=f(rho{n},h{n},rho{n,it},h{n,it},massFlux{n,it}) ;
+
+      // *********************** Begin Species *****************************
+
+      // Initialize species loop iteration 0 values.
+      yStar{n,it,is=0}=y{n,it} ;
+
+      // Assemble and solve the species equations.
+      for(int is=0;is<numSpecies;++is){
+
+        // Extract the current species mass fraction and boundary conditions.
+        // Question 1: Since y_f is independent of the iteration "is", all y_f
+        // can and should compute outside of this loop. Will the rule to extract
+        // yCurr_f cause the boundary conditions for all to be repeatedly
+        // evaluated inside this loop, or will the y_f simply promote to this
+        // level from {n,it}? Question 2: When extracting, will the output
+        // variables be explicitly qualified with the iteration level {n,it,is}?
+        // For example, output("yCurr{n,it,is}") ; ? Seems that they should.
+        // Answer: Not necessary, but can be done this way. Will do this way.
+        yCurr{n,it,is}=yStar{n,it,is}($is component) ;
+        yCurr_f{n,it,is}=y_f{n,it,is}($is component) ;
+
+        // Assemble and solve the $is species equation. All convection/diffusion
+        // source rules are iteration-independent, using yCurr and yCurr_f
+        // without any qualification. The Euler-dependent rules will explicitly
+        // call upon y{n} for the "old time" contribution to the source term. 
+        // Question: Can we use y{n} directly in this rule and extract the
+        // proper component with $is instead of extracting a yCurrOld. Seems
+        // that this should be OK. Yes, it is.
+        yCurrStar=f(rho{n},y{n}($is component),rho{n,it},yCurr{n,it,is},
+          massFlux{n,it}) ;
+
+        // Advance the species loop iteration variables. This will be an
+        // update-in-place rule, but in calculate(), only the $is component
+        // will be updated.
+        yStar{n,it,is+1}=yStar{n,it,is} ;
+      }
+
+      // Collapse the species. Also an update-in-place rule.
+      yStar{n,it}<-yStar{n,it,isMax-1}
+
+      // *********************** End Species *****************************
+
+      // Get the new temperature field by inverting total enthalpy.
+      temperatureStar{n,it}=f(totalEnthalpyStar{n,it},vCorrected{n,it},
+        pCorrected{n,it},yStar{n,it}) ;
+
+      // Compute new density field.
+      rhoStar{n,it}=f(pCorrected{n,it},temperatureStar{n,it},yStar{n,it}) ;
+
+      // Advance the iteration variables. All of these will be update-in-place
+      // rules.
+      rho{n,it}<-rho{n,it+1}<-rhoStar{n,it} ;
+      v{n,it}<-v{n,it+1}<-vCorrected{n,it} ;
+      p{n,it}<-p{n,it+1}<-pCorrected{n,it} ;
+      temperature{n,it}<-temperature{n,it+1}<-temperatureStar{n,it} ;
+      h{n,it}<-h{n,it+1}<-hStar{n,it} ;
+      y{n,it}<-y{n,it+1}<-yStar{n,it} ;
+      massFlux{n,it}<-massFlux{n,it+1}<-massFluxCorrected{n,it} ;
+    }
+
+    // Advance the time variables. Again, all update-in-place rules.
+    rho{n}<-rho{n+1}<-rho{n,itMax-1} ; v{n}<-v{n+1}<-v{n,itMax-1} ;
+    p{n}<-p{n+1}<-p{n,itMax-1} ;
+    temperature{n}<-temperature{n+1}<-temperature{n,itMax-1} ;
+    h{n}<-h{n+1}<-h{n,itMax-1} ;
+    y{n}<-y{n+1}<-y{n,itMax-1} ;
+    massFlux{n}<-massFlux{n+1}<-massFlux{n,itMax-1} ;
+  }
+
+

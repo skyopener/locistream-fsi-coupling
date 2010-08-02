@@ -1,0 +1,95 @@
+Breakdown of the incompressible SIMPLE algorithm with Euler time integration
+
+Nomenclature:
+  a) n: time-step iteration variable
+  b) it: iteration variable within the time-step
+
+Algorithm:
+
+  // Initialize time-step 0 values. Three separate build rules.
+  rho{n=0}=rho_ic ; v{n=0}=v_ic ; p{n=0}=p_ic ;
+
+  // Initialize time-step 0 face mass flux. One build rule.
+  massFlux{n=0}=f(rho_ic,v_ic,geometry{n=0}) ;
+
+  for(int n=0;n<nMax;++n){
+
+    // Here we have the state rho{n},v{n},p{n}
+
+    // Initialize iteration 0 values. Three build rules.
+    rho{n,it=0}=rho{n} ; v{n,it=0}=v{n} ; p{n,it=0}=p{n} ;
+
+    // Initialize iteration 0 face mass flux. One build rule.
+    massFlux{n,it=0}=massFlux{n} ;
+
+    for(int it=0;it<itMax;++it){
+
+      // Here we have the state rho{n,it},v{n,it},p{n,it},massFlux{n,it}.
+
+      // Compute the stage 0 contribution to the face mass flux for the
+      // current iteration(it). This is only done for interior faces.
+      // Iteration-independent rule, so no {n,it} in the rule.
+      stage0MassFlux{n,it}=f(massFlux{n,it},rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the momentum equation to produce vStar. During the
+      // assembly process we compute and save the main coefficient of the
+      // discrete equation for each cell. Composed of iteration-independent
+      // rules except for the one rule which adds on the temporal source term.
+      mainCoefficient{n,it}=diagonal coefficient of discrete equation ;
+      vStar{n,it}=f(rho{n},v{n},rho{n,it},v{n,it},p{n,it},massFlux{n,it}) ;
+
+      // Compute the face pressure correction coefficient. This is done
+      // differently for interior and boundary faces. Iteration-independent
+      // rule.
+      ppCoefficient{n,it}=f(rho{n,it},mainCoefficient{n,it},geometry{n,it}) ;
+
+      // Compute the stage 1 mass flux for the current iteration(it). This is
+      // done differently for interior and boundary faces.
+      stage1MassFlux{n,it}(interior)=f(rho{n,it},vStar(n,it},
+        ppCoefficient{n,it},p{n,it},pGradient{n,it},stage0MassFlux{n,it}) ;
+      stage1MassFlux{n,it}(boundary)=f(rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the pressure-correction equation.
+      pp{n,it}=f(ppCoefficient{n,it},stage1MassFlux{n,it},geometry{n,it}) ;
+
+      // Correct the cell velocities. This correction is broken down into two
+      // steps. 1) A correction from internal faces and 2) A correction from
+      // boundary faces. The correction for a boundary face is non-zero only if
+      // the mass flux is not specified on the faces and the boundary pressure
+      // is specified. Thus, we will have to set up some additional boundary
+      // constraints to have these operations done as separate rules.
+      vCorrected{n,it}(interior)=f(vStar{n,it},pp{n,it},mainCoefficient{n,it}) ;
+      vCorrected{n,it}(boundary)=g(vStar{n,it},pp{n,it},mainCoefficient{n,it}) ;
+
+      // Correct the cell pressures.
+      pCorrected{n,it}=f(p{n,it},pp{n,it}) ;
+
+      // Correct the face mass flux. Mass fluxes always computed for interior
+      // faces. Only computed on boundary faces where the mass flux is not
+      // specified and pressure is specified. Need the same constraints as
+      // above for the velocity correction.
+      massFluxCorrected{n,it}=f(stage1MassFlux{n,it},ppCoefficient{n,it},
+        pp{n,it}) ;
+
+      // Advance the iteration variables.
+      rho{n,it}<-rho{n,it+1} ;
+      v{n,it}<-v{n,it+1}<-vCorrected{n,it} ;
+      p{n,it}<-p{n,it+1}<-pCorrected{n,it} ;
+      massFlux{n,it}<-massFlux{n,it+1}<-massFluxCorrected{n,it} ;
+    }
+
+    // Advance the time variables.
+    rho{n}<-rho{n+1}<-rho{n,itMax-1} ; v{n}<-v{n+1}<-v{n,itMax-1} ;
+    p{n}<-p{n+1}<-p{n,itMax-1} ;
+    massFlux{n}<-massFlux{n+1}<-massFlux{n,itMax-1} ;
+  }
+
+// ----------------------------------------------------------------------------
+
+Notes:
+
+
+
+
+
+

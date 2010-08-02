@@ -1,0 +1,338 @@
+PISO for incompressible/compressible, multi-species, reacting flows.
+
+Variables:
+
+  vMainCoefficient: diagonal coefficient of momentum equation
+  H: rhs of momentum equation excluding pressure terms
+
+Algorithm:
+
+  // Solve equation of state to get density and enthalpy initial
+  // conditions, and set up the EOS hint.
+  (eos_state_ic,hint_n_ic)=f(v_ic,T_ic,p_ic,y_ic) ;
+  rho_ic=eos_state_ic.density() ; h_ic=eos_state_ic.enthalpy() ;
+
+  // Initialize time-step 0 cell values.
+  rho{n=0}=rho_ic ; v{n=0}=v_ic ; p{n=0}=p_ic ; temperature{n=0}=T_ic ;
+  h{n=0}=h_ic ; y{n=0}=y_ic ; hint_n{n=0}=hint_n_ic ;
+
+  // Initialize time-step 0 face mass flux.
+  massFlux{n=0}=f(rho_ic,v_ic) ;
+
+  // Time loop.
+  for(int n=0;n<nMax;++n){
+
+    // Here we have the state rho{n},v{n},p{n},temperature{n},h{n},y{n},
+    // massFlux{n},eos_state{n} and hint_n{n}.
+
+    // ODE solver.
+    yODE{n}=f(v{n},h{n},rho{n}) ;
+
+    // Compute eddy viscosity.
+    f2{n}=f(rho{n},k{n},omega{n},laminarViscosity{n}) ;
+    eddyViscosity{n}=f(rho{n},k{n},omega{n},laminarViscosity{n},f2{n}) ;
+
+    // Momentum predictor.
+    vMainCoefficient{n}=f(massFlux{n},viscosity{n}) ;
+    vTemporalSourceTerm{n}=f(rho{n-1},rho{n},v{n-1},v{n}) ;
+    vSourceTerm{n}=f(massFlux{n},v_f{n},gradv3d(v){n},viscosity{n},
+      tauWall{n},vTemporalSourceTerm{n}) ;
+    vStar_D{n}=f(vMainCoefficient{n}) ;
+    (vStar_L{n},vStar_U{n})=f(massFlux{n},viscosity{n}) ;
+    vStar_B{n}=f(vSourceTerm{n},p{n},grads(p){n},boundaryPressure{n}) ;
+    vStar{n}=f(vStar_D{n},vStar_L{n},vStar_U{n},vStar_B{n}) ;
+
+    // Must compute this after solving momentum equation since we need vStar.
+    vSourceTermImplicit(vStar){n}=f(massFlux{n},viscosity{n}) ;
+    H(vStar){n}=f(vSourceTerm{n},vStar_L{n},vStar_U{n}) ;
+
+    // Updated mass flux. Uses same form of momentum interpolation that we
+    // currently have in iterative algorithm.
+    pPrimeCoefficient{n}=f(faceDensity{n},vMainCoefficient{n}) ;
+    massFluxStar{n}=f(rho{n},vStar{n},p{n},pPrimeCoefficient{n}) ;
+
+    // Solve pressure correction equation.
+    speedOfSound{n}=f(eos_state{n}) ; faceDensity{n}=f(rho{n})) ;
+    pPrime_D{n}=f(pPrimeCoefficient{n},speedOfSound{n},massFluxStar{n},rho{n}) ;
+    (pPrime_L{n},pPrime_U{n})=f(pPrimeCoefficient{n},speedOfSound{n},
+      massFluxStar{n},rho{n}) ;
+    pPrime_B{n}=f(massFluxStar{n},rho{n-1},rho{n}) ;
+    pPrime{n}=f(pPrime_D{n},pPrime_L{n},pPrime_U{n},pPrime_B{n}) ;
+
+    // Correct the velocity, pressure and mass flux.
+    vCorrected(vStar,pPrime){n}=f(vMainCoefficient{n}) ;
+    pCorrected(pPrime){n}=f(p{n}) ;
+    massFluxCorrected(massFluxStar,pPrime){n}=f(pPrimeCoefficient{n}) ;
+
+    // Note that since we will be using updated velocity values in the
+    // transport equations that follow, we must have boundary condition rules
+    // for vCorrected and massFluxCorrected. These will be evaluated here.
+
+    // Energy predictor. Note that we now have no total enthalpy diffusion,
+    // only the diffusion of temperature in the source term.
+    (cp{n},kconduct{n})=f(temperature{n},p{n},y{n}) ;
+    tDiffusionCoeff{n}=f(temperature{n},p{n},y{n},eddyViscosity{n},
+      cp{n},kconduct{n}) ;
+    hMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n} ;
+    hStar_D{n}=f(hMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n}) ;
+    hStar_L(massFluxCorrected(massFluxStar,pPrime){n} ;
+    hStar_U(massFluxCorrected(massFluxStar,pPrime){n} ;
+    hTemporalSourceTerm{n}=f(rho{n-1},rho{n},p{n-1},p{n},h{n-1},h{n}) ;
+    hSourceTerm(vCorrected(vStar,pPrime),pCorrected(pPrime),massFluxCorrected(massFluxStar,pPrime)){n}=
+      f(tDiffusionCoeff{n},tauWall{n},hTemporalSourceTerm{n}) ;
+    hStar_B{n}=f(hSourceTerm(vCorrected(vStar,pPrime),pCorrected(pPrime),
+      massFluxCorrected(massFluxStar,pPrime)){n}) ;
+    hStar{n}=f(hStar_D{n},hStar_L(massFluxCorrected(massFluxStar,pPrime){n},
+      hStar_U(massFluxCorrected(massFluxStar,pPrime){n},hStar_B{n}) ;
+
+    // Species predictor. The complete updated species vector collapses out
+    // of the species loop as yStar{n}.
+    yViscosity{n}=f(laminarViscosity{n},eddyViscosity{n},laminarSchmidtNumber,
+      turbulenceSchmidtNumber) ;
+    yStar{n,is=0}=y{n} ;
+    for(int is=0;is<numSpecies;++is){
+
+      // Here we have the current state.
+      yStar{n,is} ;
+
+      // Extract the current species from the species vector.
+      yCurr{n,is}=yStar{n,is}[is] ; yCurr_f{n,is}=y_f{n}[is] ;
+
+      // Assemble and solve current species equation.
+      yCurrMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n,is}=
+        f(yViscosity{n,is}) ;
+      yCurrStar_D{n,is}=f(yCurrMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n,is}) ;
+      yCurrStar_L(massFluxCorrected(massFluxStar,pPrime){n,is}=f(yViscosity{n,is}) ;
+      yCurrStar_U(massFluxCorrected(massFluxStar,pPrime){n,is}=f(yViscosity{n,is}) ;
+      yCurrSourceTerm(massFluxCorrected(massFluxStar,pPrime)){n}=f(yViscosity{n,is}) ;
+      yCurrStar_B{n,is}=f(yCurrSourceTerm(massFluxCorrected(massFluxStar,pPrime)){n,is},
+        rho{n-1},rho{n},y{n-1},y{n},yODE{n}) ;
+      yCurrStar{n,is}=f(yCurrStar_D{n,is},yCurrStar_L(massFluxCorrected(massFluxStar,pPrime){n,is},
+        yCurrStar_U(massFluxCorrected(massFluxStar,pPrime){n,is},yCurrStar_B{n,is}) ;
+
+      // Copy solution for current species back to the species vector. This is
+      // the species advance rule.
+      yStar{n,is+1}[is]=yCurrStar{n,is} ;
+    }
+    yStar{n} ;
+
+    // K predictor.
+    f1{n}=f(rho{n},k{n},omega{n},grads(k){n},grads(omega){n},laminarViscosity{n}) ;
+    kProduction(vCorrected(vStar,pPrime)){n}=f(rho{n},k{n},eddyViscosity{n}) ;
+    kViscosity{n}=f(laminarViscosity{n},eddyViscosity{n},f1{n}) ;
+    kTemporalSourceTerm{n}=f(rho{n-1},rho{n},k{n-1},k{n}) ;
+    kMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n}=f(kViscosity{n}) ;
+    kStar_D{n}=f(kMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n},
+      kViscosity{n}) ;
+    kStar_L(massFluxCorrected(massFluxStar,pPrime){n}=f(kViscosity{n}) ;
+    kStar_U(massFluxCorrected(massFluxStar,pPrime){n}=f(kViscosity{n}) ;
+    kSourceTerm(vCorrected(vStar,pPrime),massFluxCorrected(massFluxStar,pPrime)){n}=
+      f(k_f{n},k{n},grads(k){n},kProduction(vCorrected(vStar,pPrime)){n},kViscosity{n},
+      f1{n},kTemporalSourceTerm{n}) ;
+    kStar_B{n}=f(kSourceTerm(vCorrected(vStar,pPrime),massFluxCorrected(massFluxStar,pPrime)){n}) ;
+    kStar{n}=f(kStar_D{n},kStar_L(massFluxCorrected(massFluxStar,pPrime)){n},
+      kStar_U(massFluxCorrected(massFluxStar,pPrime)){n},kStar_B{n}) ;
+
+    // Omega predictor.
+    omegaViscosity{n}=f(laminarViscosity{n},eddyViscosity{n},f1{n}) ;
+    omegaTemporalSourceTerm{n}=f(rho{n-1},rho{n},omega{n-1},omega{n}) ;
+    omegaMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n}=f(omegaViscosity{n}) ;
+    omegaStar_D{n}=f(omegaMainCoefficient(massFluxCorrected(massFluxStar,pPrime)){n},
+      omegaViscosity{n}) ;
+    omegaStar_L(massFluxCorrected(massFluxStar,pPrime){n}=f(omegaViscosity{n}) ;
+    omegaStar_U(massFluxCorrected(massFluxStar,pPrime){n}=f(omegaViscosity{n}) ;
+    omegaSourceTerm(vCorrected(vStar,pPrime),massFluxCorrected(massFluxStar,pPrime)){n}=
+      f(omega_f{n},omega{n},grads(omega){n},kProduction(vCorrected(vStar,pPrime)){n},
+      omegaViscosity{n},f1{n},omegaTemporalSourceTerm{n}) ;
+    omegaStar_B{n}=f(omegaSourceTerm(vCorrected(vStar,pPrime),massFluxCorrected(massFluxStar,pPrime)){n}) ;
+    omegaStar{n}=f(omegaStar_D{n},omegaStar_L(massFluxCorrected(massFluxStar,pPrime)){n},
+      omegaStar_U(massFluxCorrected(massFluxStar,pPrime)){n},omegaStar_B{n}) ;
+
+    // Limit values of k and omega.
+    kLimited(vCorrected(vStar,pPrime),kStar,omegaStar){n}=f(rho{n},
+      laminarViscosity{n}) ;
+    omegaLimited(vCorrected(vStar,pPrime),kStar,omegaStar){n}=f(rho{n},
+      laminarViscosity{n}) ;
+
+    // Invert EOS to get new density and temperature.
+    (eos_state_star{n},eos_mixture_state_star{n},hint_star{n},rhoStar{n},temperatureStar{n})=
+      f(vCorrected(vStar,pPrime){n},pCorrected(pPrime){n},hStar{n},yStar{n}) ;
+
+    // Initialize iteration 0 values.
+    rho{n,it=0}=rhoStar{n},v{n,it=0}=vCorrected(vStar,pPrime){n} ;
+    p{n,it=0}=pCorrected(pPrime){n} ; temperature{n,it=0}=temperatureStar{n} ;
+    h{n,it=0}=hStar{n} ;
+    k{n,it=0}=kLimited(vCorrected(vStar,pPrime),kStar,omegaStar){n} ;
+    omega{n,it=0}=omegaLimited(vCorrected(vStar,pPrime),kStar,omegaStar){n} ;
+    y{n,it=0}=yStar{n} ; massFlux{n,it=0}=massFluxCorrected(massFluxStar,pPrime){n} ;
+    pPrime{n,it=0}=pPrimeStar{n} ;
+    eos_state{n,it=0}=eos_state_star{n} ;
+    eos_mixture_state{n,it=0}=eos_mixture_state_star{n} ;
+    hint_n{n,it=0}=hint_star{n} ;
+    vMainCoefficient_it{n,it=0}=vMainCoefficient{n},H_it{n,it=0}=H(vStar){n} ;
+
+    // Stage loop.
+    for(int it=0;it<itMax;++it){
+
+      // Here we have the state rho{n,it},v{n,it},p{n,it},temperature{n,it},
+      // h{n,it},k{n,it},omega{n,it},y{n,it},massFlux{n,it},eos_state{n,it},
+      // hint_n{n,it},H_it{n,it},vMainCoefficient_it{n,it},pPrime{n,it}.
+
+      // Compute eddy viscosity.
+      f2{n,it}=f(rho{n,it},k{n,it},omega{n,it},laminarViscosity{n,it}) ;
+      eddyViscosity{n,it}=f(rho{n,it},k{n,it},omega{n,it},laminarViscosity{n,it},
+        f2{n,it}) ;
+
+      // Compute new value of H and the hatted velocity and mass flux. Note
+      // that vTemporalSourceTerm{n,it} should promote from the value computed
+      // at {n}.
+      vMainCoefficient{n,it}=f(massFlux{n,it},viscosity{n,it}) ;
+      vSourceTerm{n,it}=f(massFlux{n,it},v_f{n,it},gradv3d(v){n,it},
+        viscosity{n,it},tauWall{n,it},vTemporalSourceTerm{n,it}) ;
+      (vStar_L{n,it},vStar_U{n,it})=f(massFlux{n,it},viscosity{n,it}) ;
+      H(v){n,it}=f(vSourceTerm{n,it},vStar_L{n,it},vStar_U{n,it}) ;
+
+      // Compute the starred velocity and mass flux, which are defined as
+      // the first two terms on the RHS of the velocity and mass flux
+      // correction formulas in the corrector stage.
+      vHat{n,it}=f(vMainCoefficient{n,it},H_it{n,it},H(v){n,it}) ;
+      vStarHat{n,it}=f(vMainCoefficient_it{n,it},vMainCoefficient{n,it},v{n,it},
+        vHat{n,it}) ;
+      massFluxStarHat{n,it}=f(vMainCoefficient_it{n,it},vMainCoefficient{n,it},
+        massFlux{n,it},rho{n,it},vHat{n,it}) ;
+
+      // Solve pressure correction equation and correct pressure. Note the use
+      // of the lagged pressure correction (pPrime{n,it})for the
+      // cross-derivative terms.
+      speedOfSound{n,it}=f(eos_state{n,it}) ; faceDensity{n,it}=f(rho{n,it})) ;
+      pPrimeCoefficient{n,it}=f(faceDensity{n,it},vMainCoefficient{n,it}) ;
+      pPrimeStar_D{n,it}=f(pPrimeCoefficient{n,it},speedOfSound{n,it},
+        massFluxStarHat{n,it},rho{n,it}) ;
+      (pPrimeStar_L{n,it},pPrimeStar_U{n,it})=f(pPrimeCoefficient{n,it},
+        speedOfSound{n,it},massFluxStarHat{n,it},rho{n,it}) ;
+      pPrimeStar_B{n,it}=f(massFluxStarHat{n,it},rho{n-1},rho{n},rho{n,it},pPrime{n,it}) ;
+      pPrimeStar{n,it}=f(pPrimeStar_D{n,it},pPrimeStar_L{n,it},
+        pPrimeStar_U{n,it},pPrimeStar_B{n,it}) ;
+
+      // Correct the velocity, pressure and mass flux.
+      vCorrected(vStarHat,pPrimeStar){n,it}=f(vMainCoefficient{n,it}) ;
+      pCorrected(pPrimeStar){n,it}=f(p{n,it}) ;
+      massFluxCorrected(massFluxStarHat,pPrimeStar){n,it}=f(pPrimeCoefficient{n,it}) ;
+
+      // Note that since we will be using updated velocity values in the
+      // transport equations that follow, we must have boundary condition rules
+      // for vCorrected and massFluxCorrected. These will be evaluated here.
+
+      // Energy corrector.
+      (cp{n,it},kconduct{n,it})=f(temperature{n,it},p{n,it},y{n,it}) ;
+      tDiffusionCoeff{n,it}=f(temperature{n,it},p{n,it},y{n,it},eddyViscosity{n,it},
+        cp{n,it},kconduct{n,it}) ;
+      hMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it} ;
+      hStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it} ;
+      hStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it} ;
+      hSourceTerm(vCorrected(vStarHat,pPrimeStar),pCorrected(pPrimeStar),
+        massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}=f(tDiffusionCoeff{n,it},tauWall{n,it},
+        hTemporalSourceTerm{n,it}) ;
+      hCorrected{n,it}=f(hMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        hStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it},
+        hStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it},
+        hSourceTerm(vCorrected(vStarHat,pPrimeStar),pCorrected(pPrimeStar),
+        massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}) ;
+
+      // Species corrector. The complete updated species vector collapses out
+      // of the species loop as yCorrected{n,it}.
+      yViscosity{n,it}=f(laminarViscosity{n,it},eddyViscosity{n,it},laminarSchmidtNumber,
+        turbulenceSchmidtNumber) ;
+      yCorrected{n,it,is=0}=y{n,it} ;
+      for(int is=0;is<numSpecies;++is){
+
+        // Here we have the current state.
+        yCorrected{n,it,is} ;
+
+        // Extract the current species from the species vector.
+        yCurr{n,it,is}=yCorrected{n,it,is}[is] ; yCurr_f{n,it,is}=y_f{n,it}[is] ;
+
+        // Correct the current species.
+        yCurrMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it,is}=
+          f(yViscosity{n,is}) ;
+        yCurrStar_D{n,it,is}=f(yCurrMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it,is}) ;
+        yCurrStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it,is}=f(yViscosity{n,it,is}) ;
+        yCurrStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it,is}=f(yViscosity{n,it,is}) ;
+        yCurrSourceTerm(massFluxCorrected(massFluxStarHat,pPrimeStar)){n}=f(yViscosity{n,it,is}) ;
+        yCurrCorrected{n,it,is}=f(yCurrMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it,is},
+          yCurrStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it,is},
+          yCurrStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it,is},
+          yCurrSourceTerm(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it,is},
+          rho{n-1},rho{n},y{n-1},y{n},yODE{n}) ;
+
+        // Copy solution for current species back to the species vector. This is
+        // the species advance rule.
+        yCorrected{n,it,is+1}[is]=yCurrCorrected{n,it,is} ;
+      }
+      yCorrected{n,it} ;
+
+      // K corrector.
+      f1{n,it}=f(rho{n,it},k{n,it},omega{n,it},grads(k){n,it},grads(omega){n,it},
+        laminarViscosity{n,it}) ;
+      kProduction(vCorrected(vStarHat,pPrimeStar)){n,it}=f(rho{n,it},k{n,it},
+        eddyViscosity{n,it}) ;
+      kViscosity{n,it}=f(laminarViscosity{n,it},eddyViscosity{n,it},f1{n,it}) ;
+      kMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}=f(kViscosity{n,it}) ;
+      kStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it}=f(kViscosity{n,it}) ;
+      kStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it}=f(kViscosity{n,it}) ;
+      kSourceTerm(vCorrected(vStarHat,pPrimeStar),massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}=
+        f(k_f{n,it},k{n,it},grads(k){n,it},kProduction(vCorrected(vStarHat,pPrimeStar)){n,it},
+        kViscosity{n,it},f1{n,it},kTemporalSourceTerm{n,it}) ;
+      kCorrected{n,it}=f(kMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        k{n,it},kStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        kStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        kSourceTerm(vCorrected(vStarHat,pPrimeStar),massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}) ;
+
+      // Omega corrector.
+      omegaViscosity{n,it}=f(laminarViscosity{n,it},eddyViscosity{n,it},f1{n,it}) ;
+      omegaMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}=f(omegaViscosity{n,it}) ;
+      omegaStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it}=f(omegaViscosity{n,it}) ;
+      omegaStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar){n,it}=f(omegaViscosity{n,it}) ;
+      omegaSourceTerm(vCorrected(vStarHat,pPrimeStar),massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}=
+        f(omega_f{n,it},omega{n,it},grads(omega){n,it},kProduction(vCorrected(vStarHat,pPrimeStar)){n,it},
+        omegaViscosity{n,it},f1{n,it},omegaTemporalSourceTerm{n,it}) ;
+      omegaCorrected{n,it}=f(omegaMainCoefficient(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        omega{n,it},omegaStar_L(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        omegaStar_U(massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it},
+        omegaSourceTerm(vCorrected(vStarHat,pPrimeStar),massFluxCorrected(massFluxStarHat,pPrimeStar)){n,it}) ;
+
+      // Limit values of k and omega.
+      kLimited(vCorrected(vStarHat,pPrimeStar),kCorrected,omegaCorrected){n,it}=f(rho{n,it},
+        laminarViscosity{n,it}) ;
+      omegaLimited(vCorrected(vStarHat,pPrimeStar),kCorrected,omegaCorrected){n,it}=f(rho{n,it},
+        laminarViscosity{n,it}) ;
+
+      // Species corrector.
+      yCorrected{n,it} ;
+
+      // Invert EOS to get new density and temperature.
+      (eos_state_corrected{n,it},eos_mixture_state_corrected{n,it},hint_corrected{n,it},
+        rhoCorrected{n,it},temperatureCorrected{n,it})=f(vCorrected(vStarHat,pPrimeStar){n,it},
+        pCorrected(pPrimeStar){n,it},hCorrected{n,it},yCorrected{n,it}) ;
+
+      // Advance the iteration variables.
+      rho{n,it+1}<-rhoCorrected{n,it},v{n,it+1}<-vCorrected(vStarHat,pPrimeStar){n,it} ;
+      pPrime{n,it+1}<-pPrimeStar{n,it},p{n,it+1}<-pCorrected(pPrimeStar){n,it} ;
+      temperature{n,it+1}<-temperatureStar{n,it},h{n,it+1}=hCorrected{n,it+1} ;
+      k{n,it+1}=kLimited(vCorrected(vStarHat,pPrimeStar),kCorrected,omegaCorrected){n,it} ;
+      omega{n,it+1}=omegaLimited(vCorrected(vStarHat,pPrimeStar),kCorrected,omegaCorrected){n,it} ;
+      y{n,it+1}=yCorrected{n,it+1} ;
+      massFlux{n,it+1}=massFluxCorrected(massFluxStarHat,pPrimeStar){n,it} ;
+      eos_state{n,it+1}=eos_state_corrected{n,it} ;
+      eos_mixture_state{n,it+1}=eos_mixture_state_corrected{n,it} ;
+      hint_n{n,it+1}=hint_corrected{n,it} ;
+      H_it{n,it+1}=H(v){n,it} ; vMainCoefficient_it{n,it+1}=vMainCoefficient{n,it} ;
+    }
+
+    // Advance the time variables.
+    rho{n+1}<-rho{n,itMax-1},v{n+1}<-v{n,itMax-1},p{n+1}<-p{n,itMax-1} ;
+    temperature{n+1}<-temperature{n,itMax-1},h{n+1}<-h{n,itMax-1} ;
+    k{n+1}<-k{n,itMax-1},omega{n+1}=omega{n,itMax-1} ;
+    y{n+1}<-y{n,itMax-1},massFlux{n+1}=massFlux{n,itMax-1} ;
+    eos_state{n+1}=eos_state{n,itMax-1},hint_n{n+1}=hint_n{n,itMax-1} ;
+  }

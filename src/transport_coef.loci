@@ -1,0 +1,472 @@
+#include <Loci.h> 
+#include <Tools/tools.h>
+#include "const.h"
+#include "transport_db.h"
+#include "turb_param.h"
+#include "eos.h"
+#include "property.h"
+#include <Tools/parse.h>
+using namespace Loci::parse ;
+using namespace fluidPhysics ;
+$include "chem.lh"
+
+namespace streamUns {
+
+  $type transport_model param<std::string> ;
+  $rule default(transport_model), 
+    comments("Select the model used for transport of momentum and energy.  This can be 'none' for inviscid flow, 'sutherland' for sutherland's law (with default properties for air), 'powerLaw' for a powerlaw dependence on temperature, 'const_viscosity' for constant viscosity and conductivity, 'chemkin' for multicomponent flows, and 'database' for a species p,T database using Wilke's mixture rule.") 
+	{
+    $transport_model = "none" ;
+  } 
+
+  $type const_vis Constraint ;
+  $type suther Constraint ;
+  $type powerLaw Constraint ;
+  $type chemk Constraint ;
+  $type database Constraint ;
+  $rule constraint(const_vis,suther,powerLaw,chemk,database<-transport_model) {
+      $const_vis = EMPTY ;
+      $suther = EMPTY ;
+      $powerLaw = EMPTY ;
+      $chemk = EMPTY ;
+      $database = EMPTY ;
+      if($transport_model == "const_viscosity") {
+      $const_vis = ~EMPTY ;
+      } else if($transport_model == "sutherland") {
+      $suther = ~EMPTY ;
+      } else if($transport_model == "powerLaw") {
+      $powerLaw = ~EMPTY ;
+      } else if($transport_model == "chemkin") {
+        $chemk = ~EMPTY ;
+      } else if($transport_model == "database") {
+        $database = ~EMPTY ;
+      } else if($transport_model == "none") {
+      } else {
+        cerr << "Transport model " << $transport_model
+             << " is not available" << endl ;
+        cerr << "Available choices are:\n" ;
+        cerr << "const_viscosity, sutherland, chemkin, powerLaw, database, and none\n" ;
+        Loci::Abort() ;
+      }
+  } 
+
+  $type diffusion_model param<std::string> ;
+  $rule default(diffusion_model),
+    comments("Mass diffusion model:  This may be 'laminarSchmidt' for a diffusivity based on viscosity and the specified Schmidt number, 'const_diffusion' for a constant diffusivity, and 'chemkin' for the CHEMKIN multicomponent diffusion properties. 'default' will select the diffusion model based on the transport model using 'chemkin' when chemkin is selected for transport model, or laminarSchmidt otherwise.") 
+	{
+    $diffusion_model = "default" ;
+  } 
+
+  $type chemkin_diffusion Constraint ;
+  $type schmidt_diffusion Constraint ;
+  $type const_diffusion Constraint ;
+  $rule constraint(chemkin_diffusion,schmidt_diffusion,const_diffusion<-diffusion_model,transport_model) {
+      $chemkin_diffusion = EMPTY ;
+      $schmidt_diffusion = EMPTY ;
+      $const_diffusion = EMPTY ;
+      if($diffusion_model == "chemkin") {
+        $chemkin_diffusion = ~EMPTY ;
+      } else if($diffusion_model == "laminarSchmidt") {
+        $schmidt_diffusion = ~EMPTY ;
+      } else if($diffusion_model == "const_diffusivity") {
+        $const_diffusion = ~EMPTY ;
+      } else if($diffusion_model == "default") {
+        if($transport_model == "chemkin")
+          $chemkin_diffusion = ~EMPTY ;
+        else if($transport_model != "none") 
+          $schmidt_diffusion = ~EMPTY ;
+      } else if($diffusion_model == "none") {
+      } else {
+        cerr << "Diffusion model " << $diffusion_model
+             << " is not available" << endl ;
+        cerr << "Available choices are:\n" ;
+        cerr << "chemkin, laminarSchmidt, const_diffusivity, and none\n" ;
+        Loci::Abort() ;
+      }
+  } 
+	
+  $type Sland param<Sutherland_param> ;
+  $rule default(Sland), 
+    comments("Parameters used by sutherland model to compute conductivity and viscosity. a1-a3 define the viscosity, k1-k3 define the conductivity (if usepr == 0) otherwise conductivity is set by the Prandtl number, pr.") 
+  {
+  } 
+
+  $type turbulent_transport param<turbulent_transport> ;
+  $rule default(turbulent_transport),
+    comments("Definition of the non-dimensional properties used to define turbulent conduction and diffusion.") 
+	{
+  } 
+
+  $type powerLawParam param<powerLaw_param> ;
+  $rule optional(powerLawParam), 
+    comments("Parameters for power law definition of viscosity and conductivity") 
+	{
+  } 
+
+  $type mu param<real> ;
+  $rule optional(mu),
+      comments("Viscosity used in const_viscosity model.") 
+  {
+  } 
+
+  $type kcond param<real> ;
+
+  $rule optional(kcond), 
+    comments("conductivity used in const_viscosity transport model.") 
+  {
+  } 
+
+  $type rhod param<real> ;
+  $rule optional(rhod),
+      comments("diffusion parameter for constant diffusivity mass diffusion model") 
+	{
+  } 
+
+  $type laminarSchmidtNumber param<real> ;
+  $rule default(laminarSchmidtNumber),
+     comments("Laminar Schmidt number used in laminarSchmidt mass diffusion model.") 
+  {
+    $laminarSchmidtNumber = 0.9 ;
+  } 
+  
+  $rule pointwise(muu(T,P,MIXTURE)<-mu),constraint(const_vis,T,P,MIXTURE) {
+    $muu(T,P,MIXTURE) = $mu ;
+  } 
+
+  //specify conductivity as a constant
+  $rule pointwise(kconduct(T,P,MIXTURE)<-kcond),constraint(const_vis,T,P,MIXTURE) {
+   $kconduct(T,P,MIXTURE) = $kcond ;
+  } 
+
+  //calculate viscosity by Sutherland's Law  
+  $type T store<real> ;
+  $rule pointwise(muu(T,P,MIXTURE)<-T,Sland),constraint(suther,T) {
+      //apply Sutherland's law (refer to "Computational Fluid
+      //Mechanics and Heat Transfer", Dale Anderson, pp259)
+      real a1=$Sland.a1 ;
+      real a2=$Sland.a2 ;
+      real a3=$Sland.a3 ;
+      $muu(T,P,MIXTURE) = a1*pow($T,a2)/($T+a3) ;
+  } 
+
+  //calculate viscosity by using power Law.
+  $rule pointwise(muu(T,P,MIXTURE)<-T,powerLawParam),constraint(powerLaw,T) {
+      const real T_ref = $powerLawParam.T_ref ;
+      const real mu_ref = $powerLawParam.mu_ref ;
+      const real power = $powerLawParam.power ;
+      $muu(T,P,MIXTURE) = mu_ref*pow($T/T_ref,power) ;
+  } 
+
+  //calculate viscosity and conductivity coefficients 
+  //using CHEMKIN curve fit data. 
+  $type MIXTURE storeVec<real> ;
+  $type tran param<transport_db> ;
+  $rule pointwise(kconduct(T,P,MIXTURE){n}<-tran{n},numSpecies{n},
+  speciesMolecularMass{n},MIXTURE{n},T{n}),constraint(chemk{n},T{n}) {
+
+      int ns=$numSpecies{n} ;
+      tmp_array<real> mf(ns) ;
+
+      if(ns > 1) {
+        // Convert mass fractions to mole fractions
+        real sum = 0 ;
+        for(int i=0;i<ns;++i) {
+          mf[i] = $MIXTURE{n}[i]/$speciesMolecularMass{n}[i] ; 
+          sum += mf[i] ;
+        }
+        real rsum = 1./sum ;
+        for(int i=0;i<ns;++i) 
+          mf[i] *= rsum ;
+      } else mf[0] = 1.0 ;
+      $kconduct(T,P,MIXTURE){n} = $tran{n}.mcacon($T{n},mf) ;
+  } 
+
+  // Force this rule to evaluate only once per timestep. JW 11/24/2008.
+  $rule pointwise(muu(T,P,MIXTURE){n}<-tran{n},speciesMolecularMass{n},
+  numSpecies{n},MIXTURE{n},T{n}),constraint(chemk{n},T{n}) {
+      int ns=$numSpecies{n} ;
+      tmp_array<real> mf(ns) ;
+
+      if(ns > 1) {
+        // Convert mass fractions to mole fractions
+        real sum = 0 ;
+        for(int i=0;i<ns;++i) {
+          mf[i] = $MIXTURE{n}[i]/$speciesMolecularMass{n}[i] ; 
+          sum += mf[i] ;
+        }
+        real rsum = 1./sum ;
+        for(int i=0;i<ns;++i) 
+          mf[i] *= rsum ;
+      } else mf[0] = 1.0 ;
+      $muu(T,P,MIXTURE){n} = $tran{n}.mcavis($T{n},mf) ; 
+  }
+
+  $rule pointwise(kconduct(T,P,MIXTURE)<-muu(T,P,MIXTURE),cp,Sland,T),
+    constraint(suther,T) {
+      //apply Sutherland's law for air (refer to "Computational Fluid
+      //Mechanics and Heat Transfer", Dale Anderson, pp259)
+      //kconduct[fc] = 2.495e-3*pow(T[fc],1.5)/(T[fc]
+      //							  +194.0) ;
+      //get conductivity by the definition of Prantle number
+      if($Sland.usepr)
+        $kconduct(T,P,MIXTURE) = $muu(T,P,MIXTURE)*$cp/$Sland.pr ;
+      else
+        $kconduct(T,P,MIXTURE) = $Sland.k1*pow($T,$Sland.k2)/($T+$Sland.k3) ;
+  } 
+
+
+  $rule pointwise(kconduct(T,P,MIXTURE)<-muu(T,P,MIXTURE),cp,powerLawParam,T),
+    constraint(powerLaw,T) {
+      const real Pr = $powerLawParam.Pr ;
+      $kconduct(T,P,MIXTURE) = $muu(T,P,MIXTURE)*$cp/Pr ;
+  } 
+
+ 
+  $rule pointwise(kconduct_f<-kconduct(temperature_f,gaugePressure_f,mixture_f)),
+    inplace(kconduct_f|kconduct(temperature_f,gaugePressure_f,mixture_f)) {
+  } 
+
+
+  $rule pointwise(muu_f<-muu(temperature_f,gaugePressure_f,mixture_f)), 
+      inplace(muu_f|muu(temperature_f,gaugePressure_f,mixture_f)) {
+  } 
+
+
+  $rule pointwise(kconduct<-kconduct(temperature,gaugePressure,mixture)), 
+      inplace(kconduct|kconduct(temperature,gaugePressure,mixture)) {
+  } 
+
+  $rule pointwise(muu<-muu(temperature,gaugePressure,mixture)), 
+    inplace(muu|muu(temperature,gaugePressure,mixture)) {
+  } 
+ 
+// compute diffusion coefficients using CHEMKIN library. 
+  $rule pointwise(diff<-numSpecies,tran,turbulent_transport,Pambient,temperature_f,mixture_f,gaugePressure_f,rho_f,tmuu_f),
+      constraint(chemkin_diffusion,(cr,cl)->(vol,mixture)),
+    prelude {
+    $diff.setVecSize(*$numSpecies) ;
+  } compute {	 
+    const int ns = $numSpecies ;
+    if(ns==1) return ;
+    
+    tmp_array<real> mf(ns) ;
+    
+    const real sct = $turbulent_transport.TurbulentSchmidtNumber ;
+    real mutsc = $tmuu_f/sct ;
+    
+    real tface = $temperature_f ;
+    real pface = $gaugePressure_f + $Pambient ;
+    
+        real sum = 0.0 ;
+        for(int i=0;i<ns;++i) {
+          mf[i] = $mixture_f[i] ;
+          sum += mf[i]/$tran.MolecularWeight(i) ;
+        }
+
+        for(int i=0;i<ns;++i)
+          mf[i] = mf[i]/($tran.MolecularWeight(i)*sum) ;
+        $tran.mcadif(pface,tface,mf,$diff) ;
+
+        const real rrf = 1./$rho_f ;
+        for(int i=0;i<ns;++i)
+          $diff[i] += mutsc*rrf ;
+    }
+
+// compute diffusion coefficients on boundary faces using CHEMKIN library. 
+// Note: diffusion coefficient was not set to zero in old code
+  $rule pointwise(diff<-numSpecies),constraint(ci->vol,chemkin_diffusion),
+		prelude {
+    $diff.setVecSize(*$numSpecies) ;
+	}	compute {
+    const int ns = $numSpecies ;
+      for(int i=0; i<ns; ++i)
+          $diff[i] = 0 ;
+  }
+
+  $rule pointwise(diff<-turbulent_transport,tmuu_f,rhod,rho_f,numSpecies),
+    constraint(area,const_diffusion),
+    prelude {
+    $diff.setVecSize(*$numSpecies) ;
+	} compute {
+     const int ns = $numSpecies ;
+      real rho = $rho_f ;
+      const real sct = $turbulent_transport.TurbulentSchmidtNumber ;
+      const real mutsc = $tmuu_f/sct ;                           
+      for(int i=0;i<ns;++i) 
+        $diff[i] = ($rhod + mutsc) / rho ;
+      for(int i=0;i<ns;++i)                                 
+        $diff[i] += mutsc/rho ;                          
+  } 
+
+  $rule pointwise(diff<-numSpecies,turbulent_transport,tmuu_f,muu_f,rho_f,laminarSchmidtNumber),
+    constraint(schmidt_diffusion,muu_f,tmuu_f), 
+    prelude {
+    $diff.setVecSize(*$numSpecies) ;
+	} compute {
+    const int ns = $numSpecies ;
+      const real sct = $turbulent_transport.TurbulentSchmidtNumber ;
+      const real mutsc = $tmuu_f/sct ;
+      const real sc = $laminarSchmidtNumber ;
+      const real musc = $muu_f/sc ;
+      const real rrf = 1./$rho_f ;
+      for(int i=0;i<ns;++i) 
+        $diff[i] = (musc + mutsc) * rrf ;
+  } 
+    
+//-----------------------------------------------------------------------------
+// Rule to set up the transport property database.
+//-----------------------------------------------------------------------------
+
+  class SetupTransportPropertyDatabase : public singleton_rule {
+    private:
+      const_param<EOS> eos ;
+      param<TransportPropertyDatabase> transportPropertyDatabase ;
+    public:
+
+      // Define input and output.
+      SetupTransportPropertyDatabase() {
+        name_store("eos",eos) ;
+        name_store("transportPropertyDatabase",transportPropertyDatabase) ;
+        input("eos") ;
+        output("transportPropertyDatabase") ;
+        constraint("database") ;
+      }
+
+      // Read in the transport property data.
+      void compute(const sequence &seq) {
+
+        // Read the species from the species property files. Look in the
+        // current directory if the database enviroment variable is not defined.
+        string err("TRANSPORT PROPERTY DATABASE ERROR: ") ;
+        const char *propertyBase=getenv("PROPERTY_DATABASE") ;
+        char tmp_buf[512] ;
+        if(propertyBase==NULL) {
+          propertyBase = getenv("CHEMISTRY_DATABASE") ;
+          if(propertyBase==NULL) {
+            propertyBase="." ;
+          } else {
+            sprintf(tmp_buf,"%s/data_base/properties",propertyBase) ;
+            propertyBase = tmp_buf ;
+          }
+        }
+        const vector<string> &speciesName=eos->speciesNames() ;
+        for(int i=0;i<eos->numSpecies();++i){
+          cout << "Reading transport properties for species: "
+            << speciesName[i] << endl ;
+          string fileName=string(propertyBase)+"/"+speciesName[i]+".tran" ;
+          ifstream in(fileName.c_str()) ;
+          if(!in){
+            cerr << err << "Trouble setting up transport property database!\n"
+              << "Can't open file: " << fileName << endl ;
+            Loci::Abort() ;
+          }
+          kill_white_space(in) ;
+          if(get_token(in,speciesName[i].c_str())){
+            kill_white_space(in) ;
+            if(in.peek()!='='){
+              cerr << err << "Expecting '=' in file " << fileName << endl ;
+              Loci::Abort() ;
+            }
+            in.get() ;
+          }else{
+            cerr << err << "Expecting species name " << speciesName[i]
+              << " in file " << fileName << endl ; Loci::Abort() ;
+          }
+          kill_white_space(in) ;
+          transportPropertyDatabase->Input(in) ;
+          transportPropertyDatabase->AddMolecularMass(eos->speciesMolecularMass
+            (i)) ;
+        }
+        transportPropertyDatabase->Setup() ;
+      }
+  } ;
+
+  register_rule<SetupTransportPropertyDatabase>
+    registerSetupTransportPropertyDatabase ;
+
+
+  // Get thermal conductivity from transport property database.
+  class ConductivityFromDatabase : public pointwise_rule {
+    private:
+      const_param<int> numSpecies ;
+      const_param<TransportPropertyDatabase> transportPropertyDatabase ;
+      const_store<real> P ;
+      const_store<real> T ;
+      const_storeVec<real> mixture ;
+      store<real> kconduct ;
+    public:
+
+      // Define input and output.
+      ConductivityFromDatabase() {
+        name_store("numSpecies",numSpecies) ;
+        name_store("transportPropertyDatabase",transportPropertyDatabase) ;
+        name_store("P",P) ;
+        name_store("T",T) ;
+        name_store("MIXTURE",mixture) ;
+        name_store("kconduct(T,P,MIXTURE)",kconduct) ;
+        input("numSpecies,transportPropertyDatabase") ;
+        input("P,T,MIXTURE") ;
+        output("kconduct(T,P,MIXTURE)") ;
+        constraint("database,P,T") ;
+      }
+
+      // Get a single value from the database.
+      void calculate(Entity e) {
+        kconduct[e]=transportPropertyDatabase->Conductivity(P[e],T[e],
+          mixture[e]) ;
+      }
+
+      // Loop over entities.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+  } ;
+
+  // Register the rule.
+  register_rule<ConductivityFromDatabase> registerConductivityFromDatabase ;
+
+  // Get viscosity from transport property database.
+  class ViscosityFromDatabase : public pointwise_rule {
+    private:
+      const_param<int> numSpecies ;
+      const_param<TransportPropertyDatabase> transportPropertyDatabase ;
+      const_param<std::vector<real> > speciesMolecularMass ;
+      const_store<real> P ;
+      const_store<real> T ;
+      const_storeVec<real> mixture ;
+      store<real> muu ;
+    public:
+
+      // Define input and output.
+      ViscosityFromDatabase() {
+        name_store("numSpecies",numSpecies) ;
+        name_store("transportPropertyDatabase",transportPropertyDatabase) ;
+        name_store("speciesMolecularMass",speciesMolecularMass) ;
+        name_store("P",P) ;
+        name_store("T",T) ;
+        name_store("MIXTURE",mixture) ;
+        name_store("muu(T,P,MIXTURE)",muu) ;
+        input("numSpecies,transportPropertyDatabase,speciesMolecularMass") ;
+        input("P,T,MIXTURE") ;
+        output("muu(T,P,MIXTURE)") ;
+        constraint("database,P,T") ;
+      }
+
+      // Get a single value from the database.
+      void calculate(Entity e) {
+        //int ns=*numSpecies ;
+//cout << "before muu" << endl ;
+        muu[e]=transportPropertyDatabase->Viscosity(P[e],T[e],mixture[e]) ; 
+//cout << "after muu" << endl ;
+//cout << "e,P,T,mix,muu: " << e << " " << P[e] << " " << T[e] ;
+//for(int i=0;i<ns;++i) cout << " " << mixture[e][i] ;
+//cout << " " << muu[e] << " " << endl ;
+//Loci::Abort() ;
+      }
+
+      // Loop over entities.
+      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+  } ;
+
+  // Register the rule.
+  register_rule<ViscosityFromDatabase> registerViscosityFromDatabase ;
+}
+

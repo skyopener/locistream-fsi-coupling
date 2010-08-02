@@ -1,0 +1,627 @@
+\documentclass{article}
+\usepackage{courier}
+\usepackage{times,mathptmx}
+
+\topmargin  0.0in
+\headheight  0.15in
+\headsep  0.15in
+\footskip  0.2in
+\textheight 9.45in
+                                                                                
+\oddsidemargin 0.56in
+\evensidemargin \oddsidemargin
+\textwidth 5.8in
+
+\pagestyle{myheadings}
+\markright{\bf Loci-Stream User's Guide - Release 1.3.9}
+                                                                                
+\begin{document}
+
+\title{Loci-Stream: A Pressure-Based, Finite-Rate Chemistry Solver for
+Combustion Flows, Release 1.4.8 -- Users' Guide}
+                                                                                
+\author{Siddharth Thakur and Jeff Wright}
+
+\maketitle
+
+\newcommand{\cpp}{$C^{++}$}
+\newcommand{\CVODE}{\emph CVODE}
+\newcommand{\Loci}{\emph Loci(Version 3.2-beta-12)}
+\newcommand{\Stream}{\emph Loci-Stream}
+\newcommand{\Hypre}{\emph HYPRE(Version 1.10.0b)}
+\newcommand{\Sundials}{\emph Sundials(Version 2.3.0)}
+\newcommand{\Chemkin}{\emph Chemkin}
+\newcommand{\Chem}{\emph Chem(Version 3.2-beta-12)}
+\newcommand{\ChemUsersGuide}{\emph Chem 3: A Finite-Rate Viscous Chemistry Solver - The User Guide}
+
+\section{Installation and Required Software Libraries}
+
+Before attempting to compile \Stream\ one must install (or have installed) the
+following software libraries:
+
+\begin{enumerate}
+  \item The \Loci\ program development environment.
+  \item The \Chem\ code.
+  \item The \Hypre\ linear solver library.
+  \item The \Sundials\ CVODE library. This can be obtained from
+\emph{http://www.llnl.gov/CASC/sundials}.
+\end{enumerate}
+
+\Stream\ is distributed via the bzipped tar file stream-rel-1-4-8.tar.bz2 .
+After unpacking the
+distribution (assuming \emph{\bf /usr/local/}) one should find the
+directory \emph{\bf /usr/local/stream-rel-1-4-8}. There are three
+sub-directories under the main directory as follows:
+\begin{description}
+  \item[docs] This directory contains a number of documents decribing the
+methodology behind \Stream\ as well as this users' guide.
+  \item[examples] This directory contains a number of sample problems which
+can be used either to test \Stream\ or used as templates for constructing case
+files for new problems.
+  \item[src] This directory contains the source code for \Stream\ .
+\end{description}
+To compile \Stream\ , perform the following:
+\begin{enumerate}
+  \item Edit the file \emph{\bf Stream.conf} located in the main distribution
+directory, and provide the appropriate values for the variables
+\emph{STREAM\_INSTALL\_DIR}, \emph{LOCI\_BASE},
+\emph{STREAM\_BASE}, \emph{CHEM\_BASE}, \emph{HYPREDIR} , \emph{SUNDIALSDIR}
+and \emph{CHEMMODULEDIR}.
+  \item Execute the \emph{make} command. Upon successful compilation, one should
+find the executables \emph{\bf stream} and \emph{\bf stream-piso} in 
+the \emph{\bf bin} subdirectory of the specified install directory.
+  \item Add the \Stream\ executable directory \emph{STREAM\_INSTALL\_DIR/bin} to
+the PATH variable in your shell start-up file.
+\end{enumerate}
+To run the SIMPLE-based version of \Stream\, execute the following command:
+\begin{verbatim}
+  mpirun -np 1 stream -q solution [-inputs] caseName [debug]
+    [restartIteration]
+\end{verbatim}
+
+To use the PISO-based version of \Stream\, use 'stream-piso' in place of 'stream'.
+One can vary the number of processors as desired by modifying the value of
+the \emph{-np} option. The optional \emph{-inputs} flag can be used to
+examine the appropriate input variables and their default values. When the
+optional \emph{debug} flag is used, certain
+diagnostic output (such as maximum residual locations for each equation) will
+be written to the file \emph{debug/debug}. Include the \emph{restartIteration}
+option only when re-starting from a previous run. To determine the restart
+iteration numbers available, examine the files in the \emph{\bf restart}
+directory. \textbf {Note: If both the debug and restart iteration number options
+appear in the command line, they must be in the order specified above.}
+
+\section{Note on Units}
+
+As noted in the following section, while some input to \Stream\ may be
+specified in arbitrary units, all input data is converted into the MKS unit
+system, in which length is measured in \emph{m}, mass in \emph{kg}, time in
+\emph{s}, pressure in \emph{Pa} and temperature in \emph{K}. Upon successful
+running of a problem, data in all output files is expressed in these units,
+including flow variables and grid coordinates.
+
+\section{Problem Specification}
+
+Three data files are required for running \Stream\ . Assuming a case name
+of \emph{caseName}, these files are \emph{caseName.vog}, \emph{caseName.vars},
+and a chemistry model file such as H2O2\_6s9r.mdl . If \Chemkin\ transport
+properties are required, a fourth file such as H2O2\_6s9r.tran is also needed.
+For information on the grid file (.vog file), chemistry model and transport
+properties files, see users' guide contained in the \emph{Chem}
+distribution. \emph{\bf IMPORTANT: While the old .xdr format is still
+supported, one must use the new .vog format for restarts to work properly.}
+Standard chemistry model and transport data files from the
+\Chem\ distribution can be accessed by defining the \emph{CHEMISTRY\_DATABASE}
+enviroment variable as described in the \Chem\ users guide.
+
+Problem specification, including grid information, boundary conditions and
+numerical solver data must be specified in the so-called \emph{.vars} file.
+The \emph{\bf examples} directory contains a number of cases covering the range
+of capability of \Stream\, including incompressible/compressible,
+inviscid/viscous and non-combusting/combusting flows. The best way to create a
+\emph{.vars} file for a new problem is to copy and modify one of these template
+files, choosing one with similar physics to the new problem of interest. A
+description of each problem appears at the top of its \emph{.vars} file.
+
+The \emph{.vars} file consists of a number of \emph{facts} describing the
+problem, which can be listed in any order. In the following, we describe each
+of the possible \emph{facts} that can be present in the \emph{.vars} file, the
+use of the \emph{fact} and the conditions under which it is required.
+
+\begin{enumerate}
+
+\item{\tt grid\_file\_info}
+
+This fact is used to describe the grid file and its contents and consists of
+an options list defined by a $< >$ enclosed list of options. The
+\emph{file\_type} option is required, and the \emph{Lref} option can be
+optionally used to specify the reference length for the grid. The only fully
+supported \emph{file\_type} is the \emph{VOG} grid type. There is an extensive
+number of units supported for the \emph{Lref} option. For example, if the grid
+provided is in \emph{VOG} format and has units of inches, the entry would
+appear as follows:
+  \begin{verbatim} grid_file_info: <file_type=VOG,Lref=1 inch> \end{verbatim}
+This fact is required for all cases.
+
+\item{\tt rigidBodyGridMotion}
+
+This fact is used to specify grid motion parameters for problems with rigid-
+body grid motion. See \emph{\bf Appendix \ref{appendix:rigidBody}} for details
+on the use of this fact.
+
+\item{\tt boundary\_conditions}
+
+This fact is used to associate each tag number in the \emph{VOG} grid file
+(which denotes a subset of boundary faces of the domain) with a boundary
+condition type, and consists of an options list defined by a $< >$ enclosed
+list of boundary condition tag identifiers and their corresponding boundary
+condition type. For example, for an incompressible problem with a single inlet,
+single outlet, two no-slip walls and two symmetry boundaries, this fact might
+appear as follows:
+\begin{verbatim}
+ boundary_conditions:
+ <
+  BC_1=symmetry,BC_2=symmetry,
+  BC_3=noslip(wallFunction),BC_4=noslip(wallFunction),
+  BC_5=incompressibleInlet(rho=998.7,v=2.86808e-02,k=4.5167e-08,
+    omega=4.5167),
+  BC_18=fixedPressureOutlet(p=0.0)
+ >
+\end{verbatim}
+The number following the marker \emph{BC\_} for each boundary condition
+corresponds to the tag number for the subset of boundary faces in the
+\emph{.vog} file that defines the boundary. Note that in the \emph{.vog} file,
+this tag is actually a negative number (e.g. -1 in the \emph{.vog} file
+corresponds to \emph{BC\_1}. In addition, boundary conditions need not be
+sequentially numbered and can be placed in any order. Each boundary condition
+type consists of a name (e.g. \emph{noslip}) and an optional comma separated,
+$()$ enclosed list of options. The following is a list of all currently
+supported boundary condition types:
+\begin{description}
+  \item{\bf symmetry} This type is used for symmetry boundaries.
+There are no options required with this type.
+  \item{\bf slip} This type is used for slip boundaries. There are no options
+required with this type. One should not use both slip and noslip boundaries
+in the same simulation. If a slip wall is needed in a problem that contains
+noslip boundaries, use symmetry boundaries for the slip surfaces.
+  \item{\bf noslip} This type is used for no-slip boundaries. For turbulent flow
+cases where wall functions are desired, use the \emph{wallFunction} option.
+For walls with specified temperature, use the \emph{T=value} option. For
+an adiabatic boundary, use the \emph{adiabatic} option, although this is the
+default.
+  \item{\bf incompressibleInlet} This is an inlet boundary condition type for
+incompressible problems. Density is
+specified with the \emph{rho=value} option. One must specify either the mass
+flow rate (e.g. \emph{kg/s}) with the \emph{mdot=value} option, the mass flux
+(e.g. \emph{$kg/s*m^2$}) , with the \emph{massFlux=value} option or the
+velocity with the \emph{v=value} option. If the velocity value is a scalar,
+the x-coordinate direction is assumed. For vector specification, use the form
+\emph{v=[vX,vY,vZ]}. The flow direction can also be specified with the
+\emph{flowDirection=value} option when specifying either the mass flow rate or
+mass flux options. The value for this option may be specified as a scalar
+(x-coordinate direction flow assumed), or as a vector using the form
+\emph{flowDirection=[fX,fY,fZ]}.  If the \emph{flowDirection=value} option is
+not present when specifying a mass flow rate or mass flux, the resulting
+velocity will be assigned normal to the boundary faces, going into the domain.
+For turbulence quantities, use the \emph{k=value} and
+\emph{omega=value} options.
+  \item{\bf subsonicInlet} This compressible-flow inlet type is for inlet
+boundaries with subsonic flow conditions. One must specify either the mass flow
+rate (e.g. \emph{kg/s}) with the \emph{mdot=value} option, the mass flux
+(e.g. \emph{$kg/s*m^2$}) with the \emph{massFlux=value} option or the velocity
+with the \emph{v=value} option. The flow
+direction may also be specified with the \emph{flowDirection=value} option in
+the same manner as incompressibleInlet. Turbulence quantities
+are assigned in the same manner as incompressibleInlet.  For species
+mass fractions, use the option
+\emph{mixture=[species0=value,species1=value,...]}, where species0,species1,
+\ldots\ are the names of the species found in the \emph{.mdl} file. If a
+species is not listed, a zero mass fraction is assumed.
+  \item{\bf supersonicInlet } This compressible-flow inlet type is for inlet
+boundaries with supersonic flow conditions. One must specify the density with
+the \emph{rho=value} option, the velocity with the \emph{v=value} option, the
+pressure with the \emph{p=value} option, and the temperature with the
+\emph{T=value} option. Turbulence quantities and species mass fractions are
+assigned in the same manner as described above for
+incompressibleInlet.
+  \item{\bf totalPressureInlet } This compressible-flow inlet type is for inlet
+boundaries with specified total pressure. One must specify the total pressure
+with the \emph{p0=value} option. One can specify either the static temperature
+with the \emph{T=value} option, or the total temperature with the
+\emph{T0=value} option. Turbulence quantities and species mass fractions are
+assigned in the same manner as described above for
+incompressibleInlet. \textbf {Warning: Ideal-gas assumptions are
+made with this boundary condition, so do not use for real-fluid boundaries}.
+  \item{\bf fixedPressureOutlet} This outlet boundary condition is appropriate
+for both incompressible problems and compressible problems where the flow
+remains subsonic at all times on the outlet boundary. One can specify either a
+constant outlet pressure using the \emph{p=value} option or the mean outlet
+pressure using the \emph{pMean=value} option.
+  \item{\bf extrapolatedPressureOutlet} This outlet boundary condition is
+appropriate for incompressible problems as well as compressible problems
+where the flow is supersonic at the outlet. There are no options required
+by this type. For incompressible problems, global mass conservation is
+automatically performed.
+\end{description}
+
+One may specify boundary profiles for the variables velocity and temperature as
+well as the turbulence quantities k and omega by using either the Cartesian or
+axisymmetric input file formats described in \emph{\bf Appendix
+\ref{appendix:boundaryProfile}} . For
+example, to specify a Cartesian velocity profile (a profile varying in either
+the x, y or z direction), use the \emph{v=cartesian(file="filename")} option on any
+boundary where the \emph{v=value} option is allowed. The input filename can be
+arbitrarily selected by the user. To specify an axisymmetric velocity profile,
+one would similarly use \emph{v=axisymmetric("filename")}.
+
+\item{\tt initialCondition}
+
+This fact is used to specify initial conditions for the whole domain. For incompressible
+flows, one must specify values for density, velocity and pressure (using the
+same options as shown above for boundary conditions). For compressible flows,
+one must specify the velocity, pressure and temperature. For turbulent flow,
+specify \emph{k} and \emph{omega}. For flows with multiple species, specify the
+species mass fractions. One must use either this fact,
+{\tt initialConditionRegions} or {\tt ql} and {\tt qr} for all cases.
+
+\item{\tt initialConditionRegions}
+
+This fact, described more completely in \emph{\bf Appendix \ref{appendix:initialCondition}}
+can be used to more finely tune the initial conditions througout the domain.
+NOTE: This option is currently only available for compressible flows.
+
+\item{\tt ql and \tt qr}
+
+These facts are used to specify the starting flow conditions for problems
+with an initial left and right state. Options are identical to those for
+{\tt initialCondition} . By default, the partition between the left and
+right states is \emph{x=0.0} .
+
+\item{\tt xmid}
+
+This fact is used to adjust the partition location between the left and right
+states. Specify a real value.
+
+\item{\tt flowRegime}
+
+This fact is used to select either laminar or turbulent flow. Valid values are
+\emph{laminar} and \emph{turbulent}. This fact is required for all cases.
+
+\item{\tt flowCompressibility}
+
+This fact is used to select either incompressible or compressible flow. Valid
+values are \emph{incompressible} and \emph{compressible}. This fact is required
+for all cases.
+
+\item{\tt chemistry\_model}
+
+This fact is used to select the .mdl file. See \ChemUsersGuide\ for a
+description of this fact. This fact is required for all cases.
+
+\item{\tt thermodynamic\_model}
+
+This fact is used to specify the thermodynamic model. See \ChemUsersGuide\ for
+a description of this fact. This fact is required for all cases.
+
+\item{\tt transport\_model}
+
+This fact is used to specify the transport model for laminar viscosity and
+thermal conductivity. See \ChemUsersGuide\ for a description of this fact.
+This fact is required for all cases.
+
+\item{\tt Tf}
+
+This fact represents a freezing temperature, below which species source terms
+due to combustion cease to be active. If the temperature in a cell is less
+than this value, species production due to combustion is deactivated. Setting
+a large value (such as 1.0e30) will effectively shut down all chemical
+reactions for the entire domain.
+
+\item{\tt turbulentPrandtlNumber}
+
+This fact is used to set the turbulent Prandtl number. The default value
+is 0.7 .
+
+\item{\tt laminarSchmidtNumber}
+
+This fact is used to set the laminar Schmidt number for all species.
+The default value is 0.9 .
+
+\item{\tt turbulentSchmidtNumber}
+
+This fact is used to set the turbulent Schmidt number for all species.
+The default value is 0.95 .
+
+\item{\tt timeIntegrator}
+
+This fact is used to specify the time integrator. Valid values are \emph{BDF},
+which is the first-order backward Euler method and \emph{BDF2}, which is the
+second-order, three-level backward method. This fact is required for all cases.
+
+\item{\tt timeStep}
+
+This fact is used to specify the time-step size. It is required for all cases.
+
+\item{\tt numTimeSteps}
+
+This fact is used to specify the number of time-steps for the current run.
+It is required for all cases.
+
+\item{\tt convergenceTolerance}
+
+This fact is used to specify the convergence tolerance (e.g 1.0e-04) at each
+time-step in the calculation. There is a single tolerance for all equations
+being solved. When the tolerance is achieved at a time-step, the solver moves
+to the next time level.
+
+\item{\tt maxIterationsPerTimeStep}
+
+This fact is used to specify the maximum number of iterations per time-step.
+
+\item{\tt inviscidFlux}
+
+This fact is used to select the inviscid flux type for all equations. Specify
+\emph{FOU} for first-order upwinding, \emph{SOU} for second-order upwinding,
+or \emph{Roe} for the Roe scheme. The Roe scheme can be used only for
+compressible flows.
+
+\item{\tt turbulenceInviscidFlux}
+
+By default this fact assumes the same value as the fact {\tt inviscidFlux}.
+One may choose to solve the turbulence equations using first-order upwinding
+while using second-order upwinding on the mean-flow equations by setting this
+fact to \emph{FOU} .
+
+\item{\tt limiter}
+
+This fact is used to specify the limiter when using the \emph{SOU} option for
+the inviscid flux. Valid values are \emph{none}, \emph{venkatakrishnan} and
+\emph{barth} . For complex flows, some form of limiting may be required for
+stability purposes.
+
+\item{\tt momentumEquationOptions}
+
+This fact is used to specify solution parameters for the momentum equation,
+and is required for all cases.  Three options must be specified as follows:
+  \begin{enumerate}
+     \item{\bf linearSolver} Choose \emph{SGS} for the symmetric Gauss-Seidel
+solver.
+     \item{\bf relaxationFactor} The relaxation factor used in the non-linear
+iterative process. This option is not used by 'stream-piso'.
+     \item{\bf maxIterations} The maximum number of iterations to perform in
+the linear equation solver.
+  \end{enumerate}
+
+\item{\tt pressureEquationOptions}
+
+This fact is used to specify solution parameters for the pressure-correction
+equation, and is required for all cases. Three options must be specified as
+follows:
+  \begin{enumerate}
+     \item{\bf linearSolver} Choose \emph{SGS} for the symmetric Gauss-Seidel
+solver, \emph{PETSC} for the PETSc Krylov solver or \emph{HYPRE} for the HYPRE
+algebraic multigrid solver.
+     \item{\bf relaxationFactor} The relaxation factor used in the non-linear
+iterative process. This option is not used by 'stream-piso'.
+     \item{\bf maxIterations} The maximum number of iterations to perform in
+the linear equation solver.
+  \end{enumerate}
+
+\item{\tt energyEquationOptions}
+
+This fact is used to specify solution parameters for the energy equation,
+and is required for all compressible flow cases.  Three options must be
+specified as follows:
+  \begin{enumerate}
+     \item{\bf linearSolver} Choose \emph{SGS} for the symmetric Gauss-Seidel
+solver.
+     \item{\bf relaxationFactor} The relaxation factor used in the non-linear
+iterative process. This option is not used by 'stream-piso'.
+     \item{\bf maxIterations} The maximum number of iterations to perform in
+the linear equation solver.
+  \end{enumerate}
+
+\item{\tt turbulenceEquationOptions}
+
+This fact is used to specify solution parameters for the turbulence equations,
+(both \emph{k} and \emph{omega}) and is required for all cases where
+\emph{flowRegime=turbulent}. Four options must be specified as follows:
+  \begin{enumerate}
+     \item{\bf model} Choose \emph{menterBSL} for Menter's baseline model,
+\emph{menterSST} for Menter's original shear-stress transport model or
+\emph{menterSST2003} for Menter's updated shear-stress transport model.
+     \item{\bf des} Used to specify the Detached-Eddy Simulation model.
+Choose \emph{DES} for Strelet's 2001 DES formulation or \emph{DDES} for
+Menter's Delayed DES formulation. This is the only optional option.
+     \item{\bf linearSolver} Choose \emph{SGS} for the symmetric Gauss-Seidel
+solver.
+     \item{\bf relaxationFactor} The relaxation factor used in the non-linear
+iterative process. This option is not used by 'stream-piso'.
+     \item{\bf maxIterations} The maximum number of iterations to perform in
+the linear equation solver.
+  \end{enumerate}
+
+\item{\tt kFreestream}
+
+This fact is used to assign cell values for turbulent kinetic energy when
+negative values have been returned by the PDE. The default value is 1.0e-08 .
+
+\item{\tt omegaFreestream}
+
+This fact is used to assign cell values for turbulent dissipation rate when
+negative values have been returned by the PDE. The default value is 10.0 .
+
+\item{\tt turbulenceIntensityFreestream}
+
+This fact is used to assign cell values for turbulent kinetic energy and
+dissipation rate when negative values have been returned by the PDE for
+either k or omega. When limiting is activated, local values of density and
+velocity are used to assign a consistent set of values for both k and omega
+based on a freestream turbulence intensity value. The default value is 0.02,
+which corresponds to a 2 percent  turbulence intensity. This is the default form
+of limiting for the turbulence variables, but this form can be overridden via
+specification of {\tt kFreestream} and {\tt omegaFreestream}.
+
+\item{\tt speciesEquationOptions}
+
+This fact is used to specify solution parameters for the species equations,
+and is required for all cases where species transport has been activated
+(the number of species in the .mdl file is greater than one). Three options
+must be specified as follows:
+  \begin{enumerate}
+     \item{\bf linearSolver} Choose \emph{SGS} for the symmetric Gauss-Seidel
+solver.
+     \item{\bf relaxationFactor} The relaxation factor used in the non-linear
+iterative process. This option is not used by 'stream-piso'.
+     \item{\bf maxIterations} The maximum number of iterations to perform in
+the linear equation solver.
+  \end{enumerate}
+
+\item{\tt plot\_output}
+
+This fact is used to specify optional variables that are to be written to the
+\textbf{caseName/output} directory for post-processing. By default,
+density, velocity and pressure are always written out. For compressible flows,
+temperature is always written out. For multi-species flows, the species
+mass fractions are always written out. Optional variables are written
+by including them in a comma-separated list as in the following example:
+\begin{verbatim}
+  plot_output: h,laminarViscosity,viscosityRatio,vResidual,
+    pResidual,hResidual,kResidual,omegaResidual,lDES,vAbs
+\end{verbatim}
+
+The above list contains all possible variables that can be optionally output.
+The user need only include variables of interest. The variable viscosityRatio
+represents the ratio of the eddy viscosity to laminar viscosity. The variable
+lDES represents the DES length scale. Values greater than one indicate that DES is
+active. The variable vAbs represents the absolute fluid velocity, and is used
+for turbomachinery problems to output a consistent velocity for all parts of
+the domain (The variable v that is automatically output is the velcity of the
+fluid relative to the reference frame of the cell, which may vary from cell to
+cell).
+
+\item{\tt probe}
+
+This fact is used to specify locations for monitoring solution values. The
+format for this variable is as follows:
+\begin{verbatim}
+probe: <probe0=[x0,y0,z0],probe1=[x1,y1,z1],probe2=[x2,y2,z2],
+  ...>
+\end{verbatim}
+
+Any number of probes may be used. For
+each probe there is a corresponding data file (e.g. probe0.dat) containing the
+monitored solution values for each time-step (in time-marching mode) or each
+iteration (in steady-state mode). The order of the variables written on each
+line of the file is as follows: time-step/iteration number, solution time,
+density, vX, vY, vZ, pressure, temperature, total enthalpy, species mass
+fractions, probe position and probe distance. The solution time variable has
+meaning only in time-marching mode. Species mass fractions are only written to
+file for cases in which a mixture material is used. \bf Note: Values written
+for a probe correspond to the solution at the cell closest to the probe
+location. The probe distance variable indicates the actual distance between
+the probe and the closest cell center.
+
+\end{enumerate}
+
+\appendix
+
+\section{Rigid-Body Grid Motion} \label{appendix:rigidBody}
+
+For flows about objects that are moving in a rigid-body manner (such as pluging
+and pitching airfoils) one can use the rigid-body grid motion fact to specify
+the displacement of the object with time. In this type of simulation, the grid
+is considered to be attached to the object, and every node of the grid moves in
+a rigid-body manner. This precludes the use of this fact for problems in which
+multiple objects are moving in a rigid-body fashion relative to each other. The
+motion of the grid nodes consists of two parts, the translational motion and the
+rotational motion. The translational displacement of the nodes from the
+reference configuration (the grid specified in the .vog file) is defined by
+the equation:
+
+\begin{equation}
+  s_{translation} = sMag \times \overline{sDir} \times t + tMag \times
+    \overline{tDir} \times sin(tFreq \times t + tPhi)
+  \label{eq:translation}
+\end{equation}
+
+A bulk linear translation in time can be specified using the scalar $sMag$ and
+vector $\overline{sDir}$. For the periodic component of the translation, $tMag$
+ is a scalar indicating the magnitude of the translation,
+$\overline{tDir}$ is a vector indicating an arbitrary direction of translation,
+$tFreq$ is the angular frequency of translation and $tPhi$ is a phase lag. The
+total angle of rotation of the grid nodes from the reference configuration is
+defined by the equation:
+
+\begin{equation}
+  \theta = rAlphaBar + rMag \times sin ( rFreq \times t + rPhi )
+  \label{eq:rotation}
+\end{equation}
+
+where $rAlphaBar$ is the mean angle of rotation, $rMag$ is the magnitude of the
+rotation about the mean, $rFreq$ is the frequency of rotation (which can be
+different than the translational frequency), and $rPhi$ is a phase lag.
+
+The specification of these parameters in the .vars file using the rigid-body
+grid motion fact is done as follows:
+
+\begin{verbatim}
+
+rigidBodyGridMotion: <tDir=[0.0,1.0,0.0],tMag=0.1,tFreq=6.2831852,
+  tPhi=0.0,rCenter=[0.0,0.0,0.0],rAxis=[0.0,0.0,1.0],rAlphaBar=0.0,
+  rMag=0.0,rFreq=0.0,rPhi=0.0>
+
+\end{verbatim} 
+
+In addition to the translation and rotation parameters mentioned in Eqs.
+(\ref{eq:translation}) and (\ref{eq:rotation}), two additional parameters,
+$rCenter$, which specifies the center of rotation, and $rAxis$, which defines
+an arbitrary axis of rotation through the center of rotation, must be specified
+as shown above. \emph{\bf IMPORTANT}: To run cases with rigid-body rotation,
+one must request the rigid-body grid motion module as follows when invoking the
+executable:
+\begin{verbatim}
+  mpirun -np 1 stream -load_module gridMotion -q solution
+    [-inputs] caseName [debug] [restartIteration]
+\end{verbatim}
+
+\section{Boundary Profile File Formats} \label{appendix:boundaryProfile}
+
+Following is the Cartesian boundary profile file format (using temperature as
+an example). For an (x-T) profile use 0 for the profile flag. For (y-T) and
+(z-T) profiles use 1 and 2 respectively. Data points should be listed in the
+file in the order of increasing independent varible (either x, y or z). Note
+that any boundary faces located outside the bounds of the profile will be
+assigned the value of the nearest endpoint of the profile.
+
+\begin{verbatim}
+numDataPoints profileFlag
+for(int i=0;i<numDataPoints;++i){
+  x[i]  y[i]  z[i]  T[i]
+}
+\end{verbatim}
+
+Following is the axisymmetric boundary profile file format (using temperature
+as an example). Data points should be listed in the file in the order of
+increasing radius.
+
+\begin{verbatim}
+numDataPoints
+for(int i=0;i<numDataPoints;++i){
+  r[i]  T[i]
+}
+\end{verbatim}
+
+\section{Initial Condition Regions} \label{appendix:initialCondition}
+
+See the CHEM users manual.
+
+\end{document}
+
+
+
+
+
+
+
+

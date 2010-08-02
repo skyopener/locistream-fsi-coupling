@@ -1,0 +1,167 @@
+// Standard library includes.
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+using std::cerr ;
+using std::cout ;
+using std::endl ;
+using std::string ;
+using std::vector ;
+
+// Loci includes.
+#include <Loci.h>
+$include "FVM.lh"
+using Loci::Area ;
+
+// StreamUns includes.
+#include "sciTypes.h"
+
+namespace streamUns {
+
+  // Class for timestep ramp options.
+  class TimeStepRamp : public options_list {
+    public:
+      TimeStepRamp() : options_list("ramp0:ramp1:ramp2") {}
+  } ;
+
+  // Optional vars file input for timestep ramping.
+  $type timeStepRamp param<TimeStepRamp> ;
+  $rule optional(timeStepRamp),
+  comments("Usage <ramp0=[n=10,dt=1.0e-05],ramp1=[n=20,dt=1.0e-04],...>."),
+  comments("n: number of timesteps, dt: timestep size"),
+  comments("Three available ramps, ramp0, ramp1 and ramp2.") {
+  }
+
+  // Parse the ramp options and create ramp data.
+  $type rampNumTimeSteps param<vector<int> > ;
+  $type rampTimeStep param<vector<real> > ;
+  $rule singleton(rampNumTimeSteps,rampTimeStep<-timeStepRamp) {
+    $rampNumTimeSteps.clear() ; $rampTimeStep.clear() ;
+    for(int i=0;i<100;++i){
+      ostringstream rampStream ; rampStream << "ramp" << i ;
+      string rampName=rampStream.str() ;
+      if($timeStepRamp.optionExists(rampName)){
+        if($timeStepRamp.getOptionValueType(rampName)!=Loci::LIST){
+          cerr << "Bad format for " << rampName << endl ; Loci::Abort() ;
+        }else{
+          bool nSet=false,dtSet=false ;
+          Loci::options_list::arg_list rampList ;
+          $timeStepRamp.getOption(rampName,rampList) ;
+          for(Loci::options_list::arg_list::iterator p=rampList.begin();
+          p!=rampList.end();++p) {
+            Loci::option_values::value_list_type rampArg ; p->get_value(rampArg) ;
+            if(p->type_of()!=Loci::NAME_ASSIGN || rampArg.size()!=1 ||
+            rampArg.front().type_of()!=Loci::REAL){
+              cerr << "Bad format for " << rampName << endl ; Loci::Abort() ;
+            }
+            string argName ; p->get_value(argName) ;
+            double argValue ; rampArg.front().get_value(argValue) ;
+            if(argName=="n"){
+              nSet=true ;
+              $rampNumTimeSteps.push_back(int(argValue+0.01)) ;
+            }else if(argName=="dt"){
+              dtSet=true ;
+              $rampTimeStep.push_back(argValue) ;
+            }else{
+              cerr << "ERROR: Argument " << argName << " not valid for ramp."
+                << endl ;
+            }
+          }
+          if(!nSet || !dtSet){
+            cerr << "ERROR: Must set both n and dt for " << rampName << endl ;
+            Loci::Abort() ;
+          }
+        }
+      }else{
+        return ;
+      }
+    }
+  }
+
+  // Default vars file input for timestep ramp type.
+  $type timeStepRampType param<string> ;
+  $rule default(timeStepRampType),
+  comments("Type of interpolation used in timestep ramp."),
+  comments("Options are 'constant'.") {
+    $timeStepRampType=string("constant") ;
+  }
+
+  // Build rule for the timestep. Doing it this way, we just need to
+  // then have another rule that defines dt{n}, and then we will have
+  // access to both dt{n-1} and dt{n}. The bogus value assigned here will
+  // never be used, but we need a non-zero value here, otherwise the
+  // product dt*Q-P will be zero and we will get an FPE in later rules. JW 04/09/2010
+  $type timeStep param<real> ;
+  $type dt param<real> ;
+  $rule singleton(dt{n=-1}<-timeStep) {
+    $dt{n=-1}=$timeStep ;
+  }
+
+  // Unit/apply sequence used to get around the Loci restriction that we cannot use
+  // priority rules to override params. So, we use a pair<>, where the first value
+  // represents the priority and the second value the timestep. The definition of the
+  // > and < operators for pair<> hold that if the first value of the pair is not
+  // identical, then the first value is used for comparison. If the first values are
+  // equal, then the second is used for comparison. We can thus use Loci::Maximum
+  // with the first pair value being set as the priority.
+  $type dtTemp param<pair<int,real> > ;
+  $rule unit(dtTemp{n}),constraint(UNIVERSE{n}) {
+    $dtTemp{n}=pair<int,real>(0,0.0) ;
+  }
+
+  // Apply rule that uses value from the vars file. Priority is 1. Note that
+  // we are putting the operation inside the prelude so it is only executed once,
+  // as opposed to executing for all entities. Note the semicolon at the end of
+  // this rule, which is required when doing this.
+  $rule apply(dtTemp{n}<-timeStep{n})[Loci::Maximum],prelude {
+    join((*$dtTemp{n}),pair<int,real>(1,(*$timeStep{n}))) ;
+  } ;
+
+  // Apply rule which sets timestep based on ramping input. Priority is 2.
+  $type ncycle param<int> ;
+  $type rampNumTimeSteps param<vector<int> > ;
+  $type rampTimeStep param<vector<real> > ;
+  $rule apply(dtTemp{n}<-ncycle{n},timeStep{n},rampNumTimeSteps{n},rampTimeStep{n},
+  timeStepRampType{n})[Loci::Maximum],constraint(noRestart),prelude {
+    vector<int> interval ; interval.push_back(0) ;
+    vector<double> step ; step.push_back(0.0) ;
+    for(size_t i=0;i<(*$rampNumTimeSteps{n}).size();++i){
+      int endTimeStep=(*$rampNumTimeSteps{n})[i]+interval[i] ;
+      interval.push_back(endTimeStep) ;
+      step.push_back((*$rampTimeStep{n})[i]) ;
+    }
+    for(size_t i=1;i<interval.size();++i){
+      if((*$ncycle{n})<interval[i]){
+//      int left=interval[i-1],right=interval[i] ;
+        if((*$timeStepRampType{n})=="constant"){
+          join((*$dtTemp{n}),pair<int,real>(2,step[i])) ;
+        }else{
+          cerr << "ERROR: Bad value for 'timeStepRampType'." << endl ;
+          Loci::Abort() ;
+        }
+        return ;
+      }
+    }
+
+    // Once out of the ramp range, use the normal timestep.
+    join((*$dtTemp{n}),pair<int,real>(2,(*$timeStep{n}))) ;
+  } ;
+
+  // Copy final timestep from dtTemp.
+  $rule singleton(dt{n}<-dtTemp{n}) {
+//if(Loci::MPI_rank == 0) cout << "dt: " << $dt{n} << endl ;
+    $dt{n}=$dtTemp{n}.second ;
+  }
+
+}
+
+namespace Loci {
+
+  template<> struct data_schema_traits<streamUns::TimeStepRamp> {
+    typedef USER_DEFINED_CONVERTER Schema_Converter ;
+    typedef char Converter_Base_Type ;
+    typedef StringStreamConverter<streamUns::TimeStepRamp> Converter_Type ;
+  } ;
+
+}

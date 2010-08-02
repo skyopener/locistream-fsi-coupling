@@ -1,0 +1,110 @@
+Breakdown of the compressible SIMPLE algorithm with Euler or Crank-Nicholson
+time integration
+
+Nomenclature:
+  a) n: time-step iteration variable
+  b) it: iteration variable within the time-step
+
+Algorithm:
+
+  // Solve equation of state to get density and enthalpy initial
+  // conditions, and set up the EOS hint.
+  (eos_state_ic,hint_n_ic)=f(v_ic,t_ic,p_ic) ;
+  rho_ic=eos_state_ic.density() ; h_ic=eos_state_ic.enthalpy() ;
+
+  // Initialize time-step 0 values.
+  rho{n=0}=rho_ic ; v{n=0}=v_ic ; p{n=0}=p_ic ; temperature{n=0}=T_ic ;
+  h{n=0}=h_ic ; hint_n{n=0}=hint_n_ic ;
+
+  // Initialize time-step 0 face mass flux.
+  massFlux{n=0}=f(rho_ic,v_ic,geometry{n=0}) ;
+
+  for(int n=0;n<nMax;++n){
+
+    // Here we have the state rho{n},v{n},p{n},temperature{n},h{n},massFlux{n}
+    // and hint_n{n}.
+
+    // For Crank-Nicholson, compute boundary conditions at level {n}. The
+    // variables needed are rho_f{n},v_f{n},p_f{n},temperature_f{n},h_f{n}
+    // and y_f{n}. With these and the cell-centered values at {n}, all source
+    // terms at level {n} can be computed.
+
+    // Initialize iteration 0 values.
+    rho{n,it=0}=rho{n} ; v{n,it=0}=v{n} ; p{n,it=0}=p{n} ;
+    temperature{n,it=0}=temperature{n} ; h{n,it=0}=h{n} ;
+    hint_n{n,it=0}=hint_n{n} ;
+
+    // Initialize iteration 0 face mass flux.
+    massFlux{n,it=0}=massFlux{n} ;
+
+    for(int it=0;it<itMax;++it){
+
+      // Here we have the state rho{n,it},v{n,it},p{n,it},temperature{n,it},
+      // h{n,it},massFlux{n,it},hint_n{n,it}.
+
+      // Query the eos here to get eos_state{n,it} and eos_mixture_state{n,it}.
+      // All thermodynamic properties required to assemble come from
+      // eos_state{n,it}. In addition, the EOS should invert in one iteration
+      // since hint_n{n,it} comes from the values of  p and h at the end of
+      // the previous iteration, which are the same as the values of
+      // p and h being used for the current inversion. NOTE: Check that
+      // eos_state_f is gotten from (p,h) and not (p,T). Cell eos_state
+      // values are obtained from (p,h) queries.
+      eos_state{n,it}=f(p{n,it},h{n,it},hint_n{n,it}) ;
+      eos_mixture_state{n,it}=f(p{n,it},h{n,it},hint_n{n,it}) ;
+
+      // Compute the stage 0 contribution to the face mass flux for the
+      // current iteration(it). This is only done for interior faces.
+      stage0MassFlux{n,it}=f(massFlux{n,it},rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the momentum equation to produce vStar. During the
+      // assembly process we compute and save the main coefficient of the
+      // discrete equation for each cell.
+      mainCoefficient{n,it}=diagonal coefficient of discrete equation ;
+      vStar{n,it}=f(rho{n},v{n},rho{n,it},v{n,it},p{n,it},massFlux{n,it}) ;
+
+      // Compute the face pressure correction coefficient.
+      ppCoefficient{n,it}=f(rho{n,it},mainCoefficient{n,it},geometry{n,it}) ;
+
+      // Compute the stage 1 mass flux for the current iteration(it).
+      stage1MassFlux{n,it}(interior)=f(rho{n,it},vStar(n,it},
+        ppCoefficient{n,it},p{n,it},pGradient{n,it},stage0MassFlux{n,it}) ;
+      stage1MassFlux{n,it}(boundary)=f(rho{n,it},v{n,it},geometry{n,it}) ;
+
+      // Assemble and solve the pressure-correction equation.
+      pp{n,it}=f(ppCoefficient{n,it},stage1MassFlux{n,it},geometry{n,it}) ;
+
+      // Correct the cell velocities.
+      vCorrected{n,it}=f(vStar{n,it},pp{n,it},mainCoefficient{n,it}) ;
+
+      // Correct the cell pressures.
+      pCorrected{n,it}=f(p{n,it},pp{n,it}) ;
+
+      // Correct the face mass flux.
+      massFluxCorrected{n,it}=f(stage1MassFlux{n,it},ppCoefficient{n,it},
+        pp{n,it}) ;
+
+      // Assemble and solve the energy equation for the new total enthalpy.
+      hStar{n,it}=f(rho{n},h{n},rho{n,it},h{n,it},massFlux{n,it}) ;
+
+      // Query the EOS again to get density, temperature and the new hint.
+      (rhoStar{n,it},temperatureStar{n,it},hint{n,it})=
+        f(hStar{n,it},vCorrected{n,it},pCorrected{n,it}) ;
+
+      // Advance the iteration variables.
+      rho{n,it}<-rho{n,it+1}<-rhoStar{n,it} ;
+      v{n,it}<-v{n,it+1}<-vCorrected{n,it} ;
+      p{n,it}<-p{n,it+1}<-pCorrected{n,it} ;
+      temperature{n,it}<-temperature{n,it+1}<-temperatureStar{n,it} ;
+      h{n,it}<-h{n,it+1}<-hStar{n,it} ;
+      massFlux{n,it}<-massFlux{n,it+1}<-massFluxCorrected{n,it} ;
+      hint_n{n,it}<-hint_n{n,it+1}<-hint{n,it}
+    }
+
+    // Advance the time variables.
+    rho{n}<-rho{n+1}<-rho{n,itMax-1} ; v{n}<-v{n+1}<-v{n,itMax-1} ;
+    p{n}<-p{n+1}<-p{n,itMax-1} ;
+    temperature{n}<-temperature{n+1}<-temperature{n,itMax-1} ;
+    h{n}<-h{n+1}<-h{n,itMax-1} ;
+    massFlux{n}<-massFlux{n+1}<-massFlux{n,itMax-1} ;
+  }
