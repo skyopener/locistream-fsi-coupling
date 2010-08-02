@@ -1,0 +1,41 @@
+include $(LOCI_BASE)/Loci.conf
+
+TARGET = csd_m.so
+
+F90 = f95
+
+%.o: %.f90
+	$(F90) -c -o $@ $<
+
+OBJS =	boundaryCondition.o nlams.o
+
+JUNK = *~  core ti_files ii_files rii_files *.d
+
+INCLUDES = $(CC_LIB_FLAGS) -I. -I.. $(MAIN_INCLUDES)
+
+default:
+	$(MAKE) $(TARGET)
+
+LIB_OBJS=$(OBJS:.o=_lo.o)
+csd_m.so: $(LIB_OBJS)
+	$(SHARED_LD) $(SHARED_LD_FLAGS) csd_m.so $(LIB_FLAGS) \
+	$(LIB_OBJS)
+
+FRC : 
+
+allclean: clean
+	rm -f make.depend make.depend.bak
+
+clean:
+	rm -fr $(OBJS) $(LIB_OBJS) $(MAIN_OBJS) $(TARGET) $(JUNK)
+
+distclean: clean
+	rm -fr $(DEPEND_FILES)
+
+ALL_OFILES = $(OBJS)
+
+DEPEND_FILES=$(subst .o,.d,$(ALL_OFILES))
+
+
+#include automatically generated dependencies
+include $(DEPEND_FILES)

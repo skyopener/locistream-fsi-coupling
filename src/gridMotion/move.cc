@@ -809,16 +809,7 @@ namespace streamUns {
 
       // Loop through nodes.
       void compute(const sequence &seq) {
-	int functionType=0 ;
-	functionType = int(*func) ;
-	if (functionType == 1) {
-	  // cout << "functionType == 1" << endl ;
-	  sTranslation = ((*tMag)*sin(*tPhi))*(*tDir) ;
-	} else if (functionType == 3) {
-	  // cout << "functionType == 3" << endl ;
-	  sTranslation = ((*tMag)*(cos(*tPhi)-1.0))*(*tDir) ;
-	}
-        //sTranslation=((*tMag)*sin(*tPhi))*(*tDir) ;
+        sTranslation=((*tMag)*sin(*tPhi))*(*tDir) ;
         theta=(*rAlphaBar)+(*rMag)*sin(*rPhi) ;
         do_loop(seq,this) ;
       }
@@ -1418,7 +1409,7 @@ namespace streamUns {
 	real tFreqNew = PI2 * (*tFreq) ;
 
 	// Compute displacement.
-	
+	vect3d value ;
 	int functionType=0 ;
 	functionType = int(*func) ;
 	if (functionType == 1) {
