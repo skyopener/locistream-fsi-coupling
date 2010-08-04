@@ -829,10 +829,10 @@ $rule blackbox(CSDdisplacementsStar{n,it},CSDxStar{n,it},CSDxdotStar{n,it},CSDxd
 //				cout << "rank = " << rank << ", " << "[I] Euler-Bernoulli: i, x, xdot, xddot, disp = " << i << "\t" << (*$CSDx{n})[i] << "\t" << (*$CSDxdot{n})[i] << "\t" << (*$CSDxddot{n})[i] << "\t" << endl ;
 //			}
 			
-		if (rank==0) {
+		if (rank==0 && itcurrent < 5) {
 			std::stringstream filename ;	
-			filename << "CSDnodesforces" << setfill('0') << setw(5) << tempTimeStepNumber << "it" << itcurrent << ".dat" ;
-			// filename << "CSDnodesforces" << setfill('0') << setw(5) << tempTimeStepNumber << ".dat" ;
+			//filename << "CSDnodesforces" << setfill('0') << setw(5) << tempTimeStepNumber << "it" << itcurrent << ".dat" ;
+			filename << "CSDnodesforces" << setfill('0') << setw(5) << tempTimeStepNumber << ".dat" ;
 			ofstream CSDnodesforces ;
 			CSDnodesforces.open(filename.str().c_str(), ios::out) ;
 			CSDnodesforces << "CSDnodes.x" << ", " << "CSDnodes.y" << ", " << "CSDnodes.z" << ", " << "CSDForce.x" << ", "  << "CSDForce.y" << ", " << "CSDForce.z" << "CSDdisp.x" << ", " << "CSDdisp.y" << ", " << "CSDdisp.z" << endl ;

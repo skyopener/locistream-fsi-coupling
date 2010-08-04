@@ -94,7 +94,7 @@ namespace streamUns {
     } else if (functionType == 3) {
      // cout << "functionType == 3" << endl ;
       value = (sConst+tMag*(-1.0+cos(tFreqNew*time+tPhi)))*tDir+R*((cos(theta)-1.0)*rHat-sin(theta)*tHat) ;
-      cout << "tMag,tFreq,tFreqNew,tPhi,theta,value = " << tMag << ", " << tFreq << ", " << tFreqNew << ", " << tPhi << ", " << theta << ", " << value.y << endl ;
+      //cout << "tMag,tFreq,tFreqNew,tPhi,theta,value = " << tMag << ", " << tFreq << ", " << tFreqNew << ", " << tPhi << ", " << theta << ", " << value.y << endl ;
     } else {
      // cout << "functionType ?? " << endl ;
     }
@@ -841,19 +841,23 @@ $rule pointwise(pos_it{n,it=0}<-pos{n}),constraint(pos,gridMotionSolutionDepende
 	$pos_it{n,it=0}=$pos{n} ;   
 }
 
-$rule pointwise(pos{n,it}<-pos,pos_it{n,it},node_sStar{n,it},CFDIterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent{n,it}),prelude {
-  if (*$CFDIterationFinished{n,it-1}==true) {
-  		if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node displacements" << endl ;
-  	} else {
-  		if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
-  	}
-  } compute {
-	  if ($CFDIterationFinished{n,it-1}) {
-	  	$pos{n,it}=$pos + $node_sStar{n,it} ; 
-	  } else {
-	  	$pos{n,it}=$pos_it{n,it} ; 
-	  }
-	//  cout << "CFDIterationFinished, pos, node_sStar, pos_it" << Loci::MPI_rank << ", "  << ($CFDIterationFinished{n,it-1}) << ", " << $pos{n,it} << ", " << $node_sStar{n,it} << "," << $pos_it{n,it} << endl ;
+// $rule pointwise(pos{n,it}<-pos,pos_it{n,it},node_sStar{n,it},CFDIterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent{n,it}),prelude {
+//   if (*$CFDIterationFinished{n,it-1}==true) {
+//   		if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node displacements" << endl ;
+//   	} else {
+//   		if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
+//   	}
+//   } compute {
+// 	  if ($CFDIterationFinished{n,it-1}) {
+// 	  	$pos{n,it}=$pos + $node_sStar{n,it} ; 
+// 	  } else {
+// 	  	$pos{n,it}=$pos_it{n,it} ; 
+// 	  }
+// 	  //cout << "CFDIterationFinished, pos, node_sStar, pos_it" << Loci::MPI_rank << ", "  << ($CFDIterationFinished{n,it-1}) << ", " << $pos{n,it} << ", " << $node_sStar{n,it} << "," << $pos_it{n,it} << endl ;
+// }
+
+$rule pointwise(pos{n,it}<-pos,node_sStar{n,it}),constraint(pos,gridMotionSolutionDependent{n,it}) {
+  $pos{n,it}=$pos + $node_sStar{n,it} ; 
 }
 
 $rule pointwise(pos_it{n,it+1}<-pos{n,it}),constraint(pos,gridMotionSolutionDependent{n,it}) {
@@ -868,10 +872,10 @@ $rule pointwise(node_s{n=0}<-node_s_ic),constraint(pos,gridMotionSolutionDepende
 	$node_s{n=0} = $node_s_ic ;
 }
 
-$rule pointwise(node_s{n,it=0}<-node_s{n}),constraint(pos{n},gridMotionSolutionDependent{n}) {
-	//$node_s{n,it=0} = vect3d(0.0,0.0,0.0) ;
-	$node_s{n,it=0} = $node_s{n} ;
-}
+// $rule pointwise(node_sStar{n,it=0}<-node_s{n}),constraint(pos{n},gridMotionSolutionDependent{n}) {
+// 	//$node_s{n,it=0} = vect3d(0.0,0.0,0.0) ;
+// 	$node_sStar{n,it=0} = $node_s{n} ;
+// }
 
 $rule pointwise(node_s{n,it+1}<-node_sStar{n,it}),constraint(pos{n,it},gridMotionSolutionDependent{n,it})
 {
@@ -886,22 +890,29 @@ $rule pointwise(sMag{n,it}<-node_sStar{n,it}),constraint(pos) {
 	$sMag{n,it} = norm($node_sStar{n,it}) ;
 }
 
-$rule pointwise(node_sStar{n,it}<-sStar{n,it},CFDIterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent), prelude  {
+// $rule pointwise(node_sStar{n,it=-1}<-node_s{n}),constraint(pos,gridMotionSolutionDependent) {
+// 	$node_sStar{n,it=-1}=$node_s{n} ;
+// }
+// 
+// $rule pointwise(node_sStar{n,it=0}<-node_s{n}),constraint(pos,gridMotionSolutionDependent) {
+// 	$node_sStar{n,it=0}=$node_s{n} ;
+// }
+
+$rule pointwise(node_sStar{n,it}<-sStar{n,it},node_s{n,it},CFDIterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent), prelude  {
 	if (*$CFDIterationFinished{n,it-1}==true) {
-  		if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar" << endl ;
   	} else {
-  	if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
   	}
   } compute {
 	if ($CFDIterationFinished{n,it-1}) {
-  	$node_sStar{n,it}=$sStar{n,it} ; 
-  } else {
-  	$node_sStar{n,it}=vect3d(0.0,0.0,0.0); // not needed, but for safety
-  }
-}
-
-$rule pointwise(sMag{n,it}<-node_sStar{n,it}),constraint(pos) {
-	$sMag{n,it} = norm($node_sStar{n,it}) ;
+	  //if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar, compute" << endl ;
+	  $node_sStar{n,it}=$sStar{n,it} ; 
+	} else {
+	  //if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false, compute" << endl ;
+	  $node_sStar{n,it}=$node_s{n,it} ;
+	  //$node_sStar{n,it}=vect3d(0.0,0.0,0.0); // not needed, but for safety
+	}
 }
 
 

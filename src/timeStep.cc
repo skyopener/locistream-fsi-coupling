@@ -113,13 +113,13 @@ namespace streamUns {
 
   // Optional vars file input for timestep ramping.
   // $type timeStepRamp param<TimeStepRamp> 
-  namespace {class file_timeStep000_1278520189m813 : public Loci::optional_rule {
+  namespace {class file_timeStep000_1280810698m592 : public Loci::optional_rule {
 #line 33 "timeStep.loci"
     Loci::param<TimeStepRamp>  L_timeStepRamp_ ; 
 #line 33 "timeStep.loci"
 public:
 #line 33 "timeStep.loci"
-    file_timeStep000_1278520189m813() {
+    file_timeStep000_1280810698m592() {
 #line 33 "timeStep.loci"
        name_store("timeStepRamp",L_timeStepRamp_) ;
 #line 33 "timeStep.loci"
@@ -136,7 +136,7 @@ public:
     void compute(const Loci::sequence &seq) { 
   }} ;
 #line 34 "timeStep.loci"
-Loci::register_rule<file_timeStep000_1278520189m813> register_file_timeStep000_1278520189m813 ;
+Loci::register_rule<file_timeStep000_1280810698m592> register_file_timeStep000_1280810698m592 ;
 #line 34 "timeStep.loci"
 }
 #line 34 "timeStep.loci"
@@ -145,7 +145,7 @@ Loci::register_rule<file_timeStep000_1278520189m813> register_file_timeStep000_1
   // Parse the ramp options and create ramp data.
   // $type rampNumTimeSteps param<vector<int> > 
   // $type rampTimeStep param<vector<real> > 
-  namespace {class file_timeStep001_1278520189m813 : public Loci::singleton_rule {
+  namespace {class file_timeStep001_1280810698m593 : public Loci::singleton_rule {
 #line 39 "timeStep.loci"
     Loci::const_param<TimeStepRamp>  L_timeStepRamp_ ; 
 #line 39 "timeStep.loci"
@@ -155,7 +155,7 @@ Loci::register_rule<file_timeStep000_1278520189m813> register_file_timeStep000_1
 #line 39 "timeStep.loci"
 public:
 #line 39 "timeStep.loci"
-    file_timeStep001_1278520189m813() {
+    file_timeStep001_1280810698m593() {
 #line 39 "timeStep.loci"
        name_store("timeStepRamp",L_timeStepRamp_) ;
 #line 39 "timeStep.loci"
@@ -214,7 +214,7 @@ public:
     }
   }} ;
 #line 80 "timeStep.loci"
-Loci::register_rule<file_timeStep001_1278520189m813> register_file_timeStep001_1278520189m813 ;
+Loci::register_rule<file_timeStep001_1280810698m593> register_file_timeStep001_1280810698m593 ;
 #line 80 "timeStep.loci"
 }
 #line 80 "timeStep.loci"
@@ -222,13 +222,13 @@ Loci::register_rule<file_timeStep001_1278520189m813> register_file_timeStep001_1
 
   // Default vars file input for timestep ramp type.
   // $type timeStepRampType param<string> 
-  namespace {class file_timeStep002_1278520189m814 : public Loci::default_rule {
+  namespace {class file_timeStep002_1280810698m594 : public Loci::default_rule {
 #line 86 "timeStep.loci"
     Loci::param<string>  L_timeStepRampType_ ; 
 #line 86 "timeStep.loci"
 public:
 #line 86 "timeStep.loci"
-    file_timeStep002_1278520189m814() {
+    file_timeStep002_1280810698m594() {
 #line 86 "timeStep.loci"
        name_store("timeStepRampType",L_timeStepRampType_) ;
 #line 86 "timeStep.loci"
@@ -244,7 +244,7 @@ public:
     (*L_timeStepRampType_)=string("constant") ;
   }} ;
 #line 88 "timeStep.loci"
-Loci::register_rule<file_timeStep002_1278520189m814> register_file_timeStep002_1278520189m814 ;
+Loci::register_rule<file_timeStep002_1280810698m594> register_file_timeStep002_1280810698m594 ;
 #line 88 "timeStep.loci"
 }
 #line 88 "timeStep.loci"
@@ -257,7 +257,7 @@ Loci::register_rule<file_timeStep002_1278520189m814> register_file_timeStep002_1
   // product dt*Q-P will be zero and we will get an FPE in later rules. JW 04/09/2010
   // $type timeStep param<real> 
   // $type dt param<real> 
-  namespace {class file_timeStep003_1278520189m814 : public Loci::singleton_rule {
+  namespace {class file_timeStep003_1280810698m595 : public Loci::singleton_rule {
 #line 97 "timeStep.loci"
     Loci::const_param<real>  L_timeStep_ ; 
 #line 97 "timeStep.loci"
@@ -265,7 +265,7 @@ Loci::register_rule<file_timeStep002_1278520189m814> register_file_timeStep002_1
 #line 97 "timeStep.loci"
 public:
 #line 97 "timeStep.loci"
-    file_timeStep003_1278520189m814() {
+    file_timeStep003_1280810698m595() {
 #line 97 "timeStep.loci"
        name_store("timeStep",L_timeStep_) ;
 #line 97 "timeStep.loci"
@@ -281,7 +281,7 @@ public:
     (*L_dt_n_EQ__M_1__)=(*L_timeStep_);
   }} ;
 #line 99 "timeStep.loci"
-Loci::register_rule<file_timeStep003_1278520189m814> register_file_timeStep003_1278520189m814 ;
+Loci::register_rule<file_timeStep003_1280810698m595> register_file_timeStep003_1280810698m595 ;
 #line 99 "timeStep.loci"
 }
 #line 99 "timeStep.loci"
@@ -295,13 +295,13 @@ Loci::register_rule<file_timeStep003_1278520189m814> register_file_timeStep003_1
   // equal, then the second is used for comparison. We can thus use Loci::Maximum
   // with the first pair value being set as the priority.
   // $type dtTemp param<pair<int,real> > 
-  namespace {class file_timeStep004_1278520189m815 : public Loci::unit_rule {
+  namespace {class file_timeStep004_1280810698m595 : public Loci::unit_rule {
 #line 109 "timeStep.loci"
     Loci::param<pair<int,real> >  L_dtTemp_n__ ; 
 #line 109 "timeStep.loci"
 public:
 #line 109 "timeStep.loci"
-    file_timeStep004_1278520189m815() {
+    file_timeStep004_1280810698m595() {
 #line 109 "timeStep.loci"
        name_store("dtTemp{n}",L_dtTemp_n__) ;
 #line 109 "timeStep.loci"
@@ -315,7 +315,7 @@ public:
     (*L_dtTemp_n__)=pair<int,real>(0,0.0) ;
   }} ;
 #line 111 "timeStep.loci"
-Loci::register_rule<file_timeStep004_1278520189m815> register_file_timeStep004_1278520189m815 ;
+Loci::register_rule<file_timeStep004_1280810698m595> register_file_timeStep004_1280810698m595 ;
 #line 111 "timeStep.loci"
 }
 #line 111 "timeStep.loci"
@@ -325,7 +325,7 @@ Loci::register_rule<file_timeStep004_1278520189m815> register_file_timeStep004_1
   // we are putting the operation inside the prelude so it is only executed once,
   // as opposed to executing for all entities. Note the semicolon at the end of
   // this rule, which is required when doing this.
-  namespace {class file_timeStep005_1278520189m815 : public Loci::apply_rule< param<pair<int,real> > ,Loci::Maximum<pair<int,real> > >  {
+  namespace {class file_timeStep005_1280810698m596 : public Loci::apply_rule< param<pair<int,real> > ,Loci::Maximum<pair<int,real> > >  {
 #line 117 "timeStep.loci"
     Loci::const_param<real>  L_timeStep_n__ ; 
 #line 117 "timeStep.loci"
@@ -333,7 +333,7 @@ Loci::register_rule<file_timeStep004_1278520189m815> register_file_timeStep004_1
 #line 117 "timeStep.loci"
 public:
 #line 117 "timeStep.loci"
-    file_timeStep005_1278520189m815() {
+    file_timeStep005_1280810698m596() {
 #line 117 "timeStep.loci"
        name_store("dtTemp{n}",L_dtTemp_n__) ;
 #line 117 "timeStep.loci"
@@ -355,14 +355,14 @@ public:
 #line 122 "timeStep.loci"
 } ;
 #line 122 "timeStep.loci"
-Loci::register_rule<file_timeStep005_1278520189m815> register_file_timeStep005_1278520189m815 ;
+Loci::register_rule<file_timeStep005_1280810698m596> register_file_timeStep005_1280810698m596 ;
 #line 122 "timeStep.loci"
 }
 #line 122 "timeStep.loci"
 // $type ncycle param<int> 
   // $type rampNumTimeSteps param<vector<int> > 
   // $type rampTimeStep param<vector<real> > 
-  namespace {class file_timeStep006_1278520189m816 : public Loci::apply_rule< param<pair<int,real> > ,Loci::Maximum<pair<int,real> > >  {
+  namespace {class file_timeStep006_1280810698m597 : public Loci::apply_rule< param<pair<int,real> > ,Loci::Maximum<pair<int,real> > >  {
 #line 126 "timeStep.loci"
     Loci::const_param<real>  L_timeStep_n__ ; 
 #line 126 "timeStep.loci"
@@ -378,7 +378,7 @@ Loci::register_rule<file_timeStep005_1278520189m815> register_file_timeStep005_1
 #line 126 "timeStep.loci"
 public:
 #line 126 "timeStep.loci"
-    file_timeStep006_1278520189m816() {
+    file_timeStep006_1280810698m597() {
 #line 126 "timeStep.loci"
        name_store("dtTemp{n}",L_dtTemp_n__) ;
 #line 126 "timeStep.loci"
@@ -431,11 +431,11 @@ public:
 #line 152 "timeStep.loci"
 } ;
 #line 152 "timeStep.loci"
-Loci::register_rule<file_timeStep006_1278520189m816> register_file_timeStep006_1278520189m816 ;
+Loci::register_rule<file_timeStep006_1280810698m597> register_file_timeStep006_1280810698m597 ;
 #line 152 "timeStep.loci"
 }
 #line 152 "timeStep.loci"
-namespace {class file_timeStep007_1278520189m817 : public Loci::singleton_rule {
+namespace {class file_timeStep007_1280810698m598 : public Loci::singleton_rule {
 #line 152 "timeStep.loci"
     Loci::const_param<pair<int,real> >  L_dtTemp_n__ ; 
 #line 152 "timeStep.loci"
@@ -443,7 +443,7 @@ namespace {class file_timeStep007_1278520189m817 : public Loci::singleton_rule {
 #line 152 "timeStep.loci"
 public:
 #line 152 "timeStep.loci"
-    file_timeStep007_1278520189m817() {
+    file_timeStep007_1280810698m598() {
 #line 152 "timeStep.loci"
        name_store("dt{n}",L_dt_n__) ;
 #line 152 "timeStep.loci"
@@ -460,7 +460,7 @@ public:
     (*L_dt_n__)=(*L_dtTemp_n__).second ;
   }} ;
 #line 155 "timeStep.loci"
-Loci::register_rule<file_timeStep007_1278520189m817> register_file_timeStep007_1278520189m817 ;
+Loci::register_rule<file_timeStep007_1280810698m598> register_file_timeStep007_1280810698m598 ;
 #line 155 "timeStep.loci"
 }
 #line 155 "timeStep.loci"

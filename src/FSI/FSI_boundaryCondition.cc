@@ -802,7 +802,8 @@ namespace streamUns {
                                                                                 
       // Calculate face velocity for a single face.
       void calculate(Entity face) { v_f[face]=face_v[face] ; 
-      	//if (Loci::MPI_rank==0) cout << "face_v=v_f=" << v_f[face] << endl ;
+      	//if (Loci::MPI_rank==0) 
+	  cout << "face_v=v_f=" << v_f[face] << endl ;
       	}
                                                                                 
       // Calculate face velocity for all faces in sequence.

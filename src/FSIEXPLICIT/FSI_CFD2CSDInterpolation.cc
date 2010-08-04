@@ -459,7 +459,7 @@ namespace streamUns {
 // $type FSIIterationTolerance param<real> 
 // $type fsiBoundaryFaceWeight(X0) blackbox<vector<real> > 
 
-namespace {class file_FSI_CFD2CSDInterpolation000_1279551115m714 : public Loci::blackbox_rule {
+namespace {class file_FSI_CFD2CSDInterpolation000_1280811396m26 : public Loci::blackbox_rule {
 #line 461 "FSI_CFD2CSDInterpolation.loci"
     Loci::const_param<real>  L_FSIRBFr_ ; 
 #line 461 "FSI_CFD2CSDInterpolation.loci"
@@ -481,7 +481,7 @@ namespace {class file_FSI_CFD2CSDInterpolation000_1279551115m714 : public Loci::
 #line 461 "FSI_CFD2CSDInterpolation.loci"
 public:
 #line 461 "FSI_CFD2CSDInterpolation.loci"
-    file_FSI_CFD2CSDInterpolation000_1279551115m714() {
+    file_FSI_CFD2CSDInterpolation000_1280811396m26() {
 #line 461 "FSI_CFD2CSDInterpolation.loci"
        name_store("FSIRBFr",L_FSIRBFr_) ;
 #line 461 "FSI_CFD2CSDInterpolation.loci"
@@ -771,7 +771,7 @@ public:
 #line 802 "FSI_CFD2CSDInterpolation.loci"
 } ;
 #line 802 "FSI_CFD2CSDInterpolation.loci"
-Loci::register_rule<file_FSI_CFD2CSDInterpolation000_1279551115m714> register_file_FSI_CFD2CSDInterpolation000_1279551115m714 ;
+Loci::register_rule<file_FSI_CFD2CSDInterpolation000_1280811396m26> register_file_FSI_CFD2CSDInterpolation000_1280811396m26 ;
 #line 802 "FSI_CFD2CSDInterpolation.loci"
 }
 #line 802 "FSI_CFD2CSDInterpolation.loci"

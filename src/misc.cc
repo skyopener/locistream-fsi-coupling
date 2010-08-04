@@ -491,7 +491,7 @@
                                                                                 
 namespace streamUns {
                                                                                 
-  namespace {class file_misc000_1278520191m534 : public Loci::singleton_rule {
+  namespace {class file_misc000_1280810710m223 : public Loci::singleton_rule {
 #line 10 "misc.loci"
     Loci::const_param<fluidPhysics::EOS>  L_eos_ ; 
 #line 10 "misc.loci"
@@ -499,7 +499,7 @@ namespace streamUns {
 #line 10 "misc.loci"
 public:
 #line 10 "misc.loci"
-    file_misc000_1278520191m534() {
+    file_misc000_1280810710m223() {
 #line 10 "misc.loci"
        name_store("eos",L_eos_) ;
 #line 10 "misc.loci"
@@ -520,7 +520,7 @@ public:
                                 nts,nte,nsgk) ;
   }} ;
 #line 17 "misc.loci"
-Loci::register_rule<file_misc000_1278520191m534> register_file_misc000_1278520191m534 ;
+Loci::register_rule<file_misc000_1280810710m223> register_file_misc000_1280810710m223 ;
 #line 17 "misc.loci"
 }
 #line 17 "misc.loci"

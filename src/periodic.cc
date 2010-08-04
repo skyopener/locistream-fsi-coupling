@@ -500,7 +500,7 @@ namespace streamUns {
   // faces, also causes the periodic faces to be included in our contraint
   // "internalFaces" since this constraint is now computed using (cl,cr)->vol
   // instead of (cl,cr)->geom_cells as was done before.
-  namespace {class file_periodic000_1278520190m661 : public Loci::pointwise_rule {
+  namespace {class file_periodic000_1280810708m59 : public Loci::pointwise_rule {
 #line 19 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 19 "periodic.loci"
@@ -512,7 +512,7 @@ namespace streamUns {
 #line 19 "periodic.loci"
 public:
 #line 19 "periodic.loci"
-    file_periodic000_1278520190m661() {
+    file_periodic000_1280810708m59() {
 #line 19 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 19 "periodic.loci"
@@ -539,14 +539,14 @@ public:
 #line 21 "periodic.loci"
 } ;
 #line 21 "periodic.loci"
-Loci::register_rule<file_periodic000_1278520190m661> register_file_periodic000_1278520190m661 ;
+Loci::register_rule<file_periodic000_1280810708m59> register_file_periodic000_1280810708m59 ;
 #line 21 "periodic.loci"
 }
 #line 21 "periodic.loci"
 
 
   // Cell center.
-  namespace {class file_periodic001_1278520190m662 : public Loci::pointwise_rule {
+  namespace {class file_periodic001_1280810708m60 : public Loci::pointwise_rule {
 #line 25 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 25 "periodic.loci"
@@ -562,7 +562,7 @@ Loci::register_rule<file_periodic000_1278520190m661> register_file_periodic000_1
 #line 25 "periodic.loci"
 public:
 #line 25 "periodic.loci"
-    file_periodic001_1278520190m662() {
+    file_periodic001_1280810708m60() {
 #line 25 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 25 "periodic.loci"
@@ -596,7 +596,7 @@ public:
 #line 28 "periodic.loci"
 } ;
 #line 28 "periodic.loci"
-Loci::register_rule<file_periodic001_1278520190m662> register_file_periodic001_1278520190m662 ;
+Loci::register_rule<file_periodic001_1280810708m60> register_file_periodic001_1280810708m60 ;
 #line 28 "periodic.loci"
 }
 #line 28 "periodic.loci"
@@ -604,7 +604,7 @@ Loci::register_rule<file_periodic001_1278520190m662> register_file_periodic001_1
 
   // Laminar viscosity.
   // $type laminarViscosity store<real> 
-  namespace {class file_periodic002_1278520190m663 : public Loci::pointwise_rule {
+  namespace {class file_periodic002_1280810708m61 : public Loci::pointwise_rule {
 #line 32 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 32 "periodic.loci"
@@ -616,7 +616,7 @@ Loci::register_rule<file_periodic001_1278520190m662> register_file_periodic001_1
 #line 32 "periodic.loci"
 public:
 #line 32 "periodic.loci"
-    file_periodic002_1278520190m663() {
+    file_periodic002_1280810708m61() {
 #line 32 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 32 "periodic.loci"
@@ -643,7 +643,7 @@ public:
 #line 34 "periodic.loci"
 } ;
 #line 34 "periodic.loci"
-Loci::register_rule<file_periodic002_1278520190m663> register_file_periodic002_1278520190m663 ;
+Loci::register_rule<file_periodic002_1280810708m61> register_file_periodic002_1280810708m61 ;
 #line 34 "periodic.loci"
 }
 #line 34 "periodic.loci"
@@ -652,7 +652,7 @@ Loci::register_rule<file_periodic002_1278520190m663> register_file_periodic002_1
   // Eddy viscosity. Only need this rule for laminar flow, since eddyViscosity
   // is a derived variable for turbulent flows.
   // $type eddyViscosity store<real> 
-  namespace {class file_periodic003_1278520190m664 : public Loci::pointwise_rule {
+  namespace {class file_periodic003_1280810708m62 : public Loci::pointwise_rule {
 #line 40 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 40 "periodic.loci"
@@ -664,7 +664,7 @@ Loci::register_rule<file_periodic002_1278520190m663> register_file_periodic002_1
 #line 40 "periodic.loci"
 public:
 #line 40 "periodic.loci"
-    file_periodic003_1278520190m664() {
+    file_periodic003_1280810708m62() {
 #line 40 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 40 "periodic.loci"
@@ -693,7 +693,7 @@ public:
 #line 42 "periodic.loci"
 } ;
 #line 42 "periodic.loci"
-Loci::register_rule<file_periodic003_1278520190m664> register_file_periodic003_1278520190m664 ;
+Loci::register_rule<file_periodic003_1280810708m62> register_file_periodic003_1280810708m62 ;
 #line 42 "periodic.loci"
 }
 #line 42 "periodic.loci"
@@ -701,7 +701,7 @@ Loci::register_rule<file_periodic003_1278520190m664> register_file_periodic003_1
 
   // Speed of sound.
   // $type soundSpeed store<real> 
-  namespace {class file_periodic004_1278520190m664 : public Loci::pointwise_rule {
+  namespace {class file_periodic004_1280810708m63 : public Loci::pointwise_rule {
 #line 46 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 46 "periodic.loci"
@@ -713,7 +713,7 @@ Loci::register_rule<file_periodic003_1278520190m664> register_file_periodic003_1
 #line 46 "periodic.loci"
 public:
 #line 46 "periodic.loci"
-    file_periodic004_1278520190m664() {
+    file_periodic004_1280810708m63() {
 #line 46 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 46 "periodic.loci"
@@ -740,7 +740,7 @@ public:
 #line 48 "periodic.loci"
 } ;
 #line 48 "periodic.loci"
-Loci::register_rule<file_periodic004_1278520190m664> register_file_periodic004_1278520190m664 ;
+Loci::register_rule<file_periodic004_1280810708m63> register_file_periodic004_1280810708m63 ;
 #line 48 "periodic.loci"
 }
 #line 48 "periodic.loci"
@@ -748,7 +748,7 @@ Loci::register_rule<file_periodic004_1278520190m664> register_file_periodic004_1
 
   // Specific heat.
   // $type cp store<real> 
-  namespace {class file_periodic005_1278520190m665 : public Loci::pointwise_rule {
+  namespace {class file_periodic005_1280810708m64 : public Loci::pointwise_rule {
 #line 52 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 52 "periodic.loci"
@@ -760,7 +760,7 @@ Loci::register_rule<file_periodic004_1278520190m664> register_file_periodic004_1
 #line 52 "periodic.loci"
 public:
 #line 52 "periodic.loci"
-    file_periodic005_1278520190m665() {
+    file_periodic005_1280810708m64() {
 #line 52 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 52 "periodic.loci"
@@ -787,7 +787,7 @@ public:
 #line 54 "periodic.loci"
 } ;
 #line 54 "periodic.loci"
-Loci::register_rule<file_periodic005_1278520190m665> register_file_periodic005_1278520190m665 ;
+Loci::register_rule<file_periodic005_1280810708m64> register_file_periodic005_1280810708m64 ;
 #line 54 "periodic.loci"
 }
 #line 54 "periodic.loci"
@@ -795,7 +795,7 @@ Loci::register_rule<file_periodic005_1278520190m665> register_file_periodic005_1
 
   // Current species enthalpy for cells.
   // $type yCurrEnthalpyCell store<real> 
-  namespace {class file_periodic006_1278520190m666 : public Loci::pointwise_rule {
+  namespace {class file_periodic006_1280810708m65 : public Loci::pointwise_rule {
 #line 58 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 58 "periodic.loci"
@@ -807,7 +807,7 @@ Loci::register_rule<file_periodic005_1278520190m665> register_file_periodic005_1
 #line 58 "periodic.loci"
 public:
 #line 58 "periodic.loci"
-    file_periodic006_1278520190m666() {
+    file_periodic006_1280810708m65() {
 #line 58 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 58 "periodic.loci"
@@ -834,7 +834,7 @@ public:
 #line 60 "periodic.loci"
 } ;
 #line 60 "periodic.loci"
-Loci::register_rule<file_periodic006_1278520190m666> register_file_periodic006_1278520190m666 ;
+Loci::register_rule<file_periodic006_1280810708m65> register_file_periodic006_1280810708m65 ;
 #line 60 "periodic.loci"
 }
 #line 60 "periodic.loci"
@@ -842,7 +842,7 @@ Loci::register_rule<file_periodic006_1278520190m666> register_file_periodic006_1
 
   // Density initial condition.
   // $type rho_ic store<real> 
-  namespace {class file_periodic007_1278520190m666 : public Loci::pointwise_rule {
+  namespace {class file_periodic007_1280810708m66 : public Loci::pointwise_rule {
 #line 64 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 64 "periodic.loci"
@@ -854,7 +854,7 @@ Loci::register_rule<file_periodic006_1278520190m666> register_file_periodic006_1
 #line 64 "periodic.loci"
 public:
 #line 64 "periodic.loci"
-    file_periodic007_1278520190m666() {
+    file_periodic007_1280810708m66() {
 #line 64 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 64 "periodic.loci"
@@ -881,7 +881,7 @@ public:
 #line 66 "periodic.loci"
 } ;
 #line 66 "periodic.loci"
-Loci::register_rule<file_periodic007_1278520190m666> register_file_periodic007_1278520190m666 ;
+Loci::register_rule<file_periodic007_1280810708m66> register_file_periodic007_1280810708m66 ;
 #line 66 "periodic.loci"
 }
 #line 66 "periodic.loci"
@@ -889,7 +889,7 @@ Loci::register_rule<file_periodic007_1278520190m666> register_file_periodic007_1
 
   // Density.
   // $type rho store<real> 
-  namespace {class file_periodic008_1278520190m667 : public Loci::pointwise_rule {
+  namespace {class file_periodic008_1280810708m66 : public Loci::pointwise_rule {
 #line 70 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 70 "periodic.loci"
@@ -901,7 +901,7 @@ Loci::register_rule<file_periodic007_1278520190m666> register_file_periodic007_1
 #line 70 "periodic.loci"
 public:
 #line 70 "periodic.loci"
-    file_periodic008_1278520190m667() {
+    file_periodic008_1280810708m66() {
 #line 70 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 70 "periodic.loci"
@@ -928,7 +928,7 @@ public:
 #line 72 "periodic.loci"
 } ;
 #line 72 "periodic.loci"
-Loci::register_rule<file_periodic008_1278520190m667> register_file_periodic008_1278520190m667 ;
+Loci::register_rule<file_periodic008_1280810708m66> register_file_periodic008_1280810708m66 ;
 #line 72 "periodic.loci"
 }
 #line 72 "periodic.loci"
@@ -936,7 +936,7 @@ Loci::register_rule<file_periodic008_1278520190m667> register_file_periodic008_1
 
   // Velocity initial condition.
   // $type v_ic store<vect3d> 
-  namespace {class file_periodic009_1278520190m667 : public Loci::pointwise_rule {
+  namespace {class file_periodic009_1280810708m67 : public Loci::pointwise_rule {
 #line 77 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 77 "periodic.loci"
@@ -952,7 +952,7 @@ Loci::register_rule<file_periodic008_1278520190m667> register_file_periodic008_1
 #line 77 "periodic.loci"
 public:
 #line 77 "periodic.loci"
-    file_periodic009_1278520190m667() {
+    file_periodic009_1280810708m67() {
 #line 77 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 77 "periodic.loci"
@@ -986,7 +986,7 @@ public:
 #line 80 "periodic.loci"
 } ;
 #line 80 "periodic.loci"
-Loci::register_rule<file_periodic009_1278520190m667> register_file_periodic009_1278520190m667 ;
+Loci::register_rule<file_periodic009_1280810708m67> register_file_periodic009_1280810708m67 ;
 #line 80 "periodic.loci"
 }
 #line 80 "periodic.loci"
@@ -994,7 +994,7 @@ Loci::register_rule<file_periodic009_1278520190m667> register_file_periodic009_1
 
   // Velocity.
   // $type v store<vect3d> 
-  namespace {class file_periodic010_1278520190m668 : public Loci::pointwise_rule {
+  namespace {class file_periodic010_1280810708m68 : public Loci::pointwise_rule {
 #line 85 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 85 "periodic.loci"
@@ -1010,7 +1010,7 @@ Loci::register_rule<file_periodic009_1278520190m667> register_file_periodic009_1
 #line 85 "periodic.loci"
 public:
 #line 85 "periodic.loci"
-    file_periodic010_1278520190m668() {
+    file_periodic010_1280810708m68() {
 #line 85 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 85 "periodic.loci"
@@ -1044,7 +1044,7 @@ public:
 #line 88 "periodic.loci"
 } ;
 #line 88 "periodic.loci"
-Loci::register_rule<file_periodic010_1278520190m668> register_file_periodic010_1278520190m668 ;
+Loci::register_rule<file_periodic010_1280810708m68> register_file_periodic010_1280810708m68 ;
 #line 88 "periodic.loci"
 }
 #line 88 "periodic.loci"
@@ -1052,7 +1052,7 @@ Loci::register_rule<file_periodic010_1278520190m668> register_file_periodic010_1
 
   // New velocity.
   // $type vStar store<vect3d> 
-  namespace {class file_periodic011_1278520190m668 : public Loci::pointwise_rule {
+  namespace {class file_periodic011_1280810708m69 : public Loci::pointwise_rule {
 #line 93 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 93 "periodic.loci"
@@ -1068,7 +1068,7 @@ Loci::register_rule<file_periodic010_1278520190m668> register_file_periodic010_1
 #line 93 "periodic.loci"
 public:
 #line 93 "periodic.loci"
-    file_periodic011_1278520190m668() {
+    file_periodic011_1280810708m69() {
 #line 93 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 93 "periodic.loci"
@@ -1102,7 +1102,7 @@ public:
 #line 96 "periodic.loci"
 } ;
 #line 96 "periodic.loci"
-Loci::register_rule<file_periodic011_1278520190m668> register_file_periodic011_1278520190m668 ;
+Loci::register_rule<file_periodic011_1280810708m69> register_file_periodic011_1280810708m69 ;
 #line 96 "periodic.loci"
 }
 #line 96 "periodic.loci"
@@ -1110,7 +1110,7 @@ Loci::register_rule<file_periodic011_1278520190m668> register_file_periodic011_1
 
   // Pressure initial condition.
   // $type p_ic store<real> 
-  namespace {class file_periodic012_1278520190m668 : public Loci::pointwise_rule {
+  namespace {class file_periodic012_1280810708m70 : public Loci::pointwise_rule {
 #line 100 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 100 "periodic.loci"
@@ -1122,7 +1122,7 @@ Loci::register_rule<file_periodic011_1278520190m668> register_file_periodic011_1
 #line 100 "periodic.loci"
 public:
 #line 100 "periodic.loci"
-    file_periodic012_1278520190m668() {
+    file_periodic012_1280810708m70() {
 #line 100 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 100 "periodic.loci"
@@ -1149,7 +1149,7 @@ public:
 #line 102 "periodic.loci"
 } ;
 #line 102 "periodic.loci"
-Loci::register_rule<file_periodic012_1278520190m668> register_file_periodic012_1278520190m668 ;
+Loci::register_rule<file_periodic012_1280810708m70> register_file_periodic012_1280810708m70 ;
 #line 102 "periodic.loci"
 }
 #line 102 "periodic.loci"
@@ -1157,7 +1157,7 @@ Loci::register_rule<file_periodic012_1278520190m668> register_file_periodic012_1
 
   // Pressure.
   // $type p store<real> 
-  namespace {class file_periodic013_1278520190m669 : public Loci::pointwise_rule {
+  namespace {class file_periodic013_1280810708m70 : public Loci::pointwise_rule {
 #line 106 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 106 "periodic.loci"
@@ -1169,7 +1169,7 @@ Loci::register_rule<file_periodic012_1278520190m668> register_file_periodic012_1
 #line 106 "periodic.loci"
 public:
 #line 106 "periodic.loci"
-    file_periodic013_1278520190m669() {
+    file_periodic013_1280810708m70() {
 #line 106 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 106 "periodic.loci"
@@ -1196,7 +1196,7 @@ public:
 #line 108 "periodic.loci"
 } ;
 #line 108 "periodic.loci"
-Loci::register_rule<file_periodic013_1278520190m669> register_file_periodic013_1278520190m669 ;
+Loci::register_rule<file_periodic013_1280810708m70> register_file_periodic013_1280810708m70 ;
 #line 108 "periodic.loci"
 }
 #line 108 "periodic.loci"
@@ -1204,7 +1204,7 @@ Loci::register_rule<file_periodic013_1278520190m669> register_file_periodic013_1
 
   // Pressure correction.
   // $type pPrime store<real> 
-  namespace {class file_periodic014_1278520190m669 : public Loci::pointwise_rule {
+  namespace {class file_periodic014_1280810708m71 : public Loci::pointwise_rule {
 #line 112 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 112 "periodic.loci"
@@ -1216,7 +1216,7 @@ Loci::register_rule<file_periodic013_1278520190m669> register_file_periodic013_1
 #line 112 "periodic.loci"
 public:
 #line 112 "periodic.loci"
-    file_periodic014_1278520190m669() {
+    file_periodic014_1280810708m71() {
 #line 112 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 112 "periodic.loci"
@@ -1243,7 +1243,7 @@ public:
 #line 114 "periodic.loci"
 } ;
 #line 114 "periodic.loci"
-Loci::register_rule<file_periodic014_1278520190m669> register_file_periodic014_1278520190m669 ;
+Loci::register_rule<file_periodic014_1280810708m71> register_file_periodic014_1280810708m71 ;
 #line 114 "periodic.loci"
 }
 #line 114 "periodic.loci"
@@ -1251,7 +1251,7 @@ Loci::register_rule<file_periodic014_1278520190m669> register_file_periodic014_1
 
   // Temperature initial condition.
   // $type T_ic store<real> 
-  namespace {class file_periodic015_1278520190m670 : public Loci::pointwise_rule {
+  namespace {class file_periodic015_1280810708m71 : public Loci::pointwise_rule {
 #line 118 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 118 "periodic.loci"
@@ -1263,7 +1263,7 @@ Loci::register_rule<file_periodic014_1278520190m669> register_file_periodic014_1
 #line 118 "periodic.loci"
 public:
 #line 118 "periodic.loci"
-    file_periodic015_1278520190m670() {
+    file_periodic015_1280810708m71() {
 #line 118 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 118 "periodic.loci"
@@ -1290,7 +1290,7 @@ public:
 #line 120 "periodic.loci"
 } ;
 #line 120 "periodic.loci"
-Loci::register_rule<file_periodic015_1278520190m670> register_file_periodic015_1278520190m670 ;
+Loci::register_rule<file_periodic015_1280810708m71> register_file_periodic015_1280810708m71 ;
 #line 120 "periodic.loci"
 }
 #line 120 "periodic.loci"
@@ -1298,7 +1298,7 @@ Loci::register_rule<file_periodic015_1278520190m670> register_file_periodic015_1
 
   // Temperature.
   // $type temperature store<real> 
-  namespace {class file_periodic016_1278520190m670 : public Loci::pointwise_rule {
+  namespace {class file_periodic016_1280810708m72 : public Loci::pointwise_rule {
 #line 124 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 124 "periodic.loci"
@@ -1310,7 +1310,7 @@ Loci::register_rule<file_periodic015_1278520190m670> register_file_periodic015_1
 #line 124 "periodic.loci"
 public:
 #line 124 "periodic.loci"
-    file_periodic016_1278520190m670() {
+    file_periodic016_1280810708m72() {
 #line 124 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 124 "periodic.loci"
@@ -1337,7 +1337,7 @@ public:
 #line 126 "periodic.loci"
 } ;
 #line 126 "periodic.loci"
-Loci::register_rule<file_periodic016_1278520190m670> register_file_periodic016_1278520190m670 ;
+Loci::register_rule<file_periodic016_1280810708m72> register_file_periodic016_1280810708m72 ;
 #line 126 "periodic.loci"
 }
 #line 126 "periodic.loci"
@@ -1345,7 +1345,7 @@ Loci::register_rule<file_periodic016_1278520190m670> register_file_periodic016_1
 
   // Total enthalpy.
   // $type h store<real> 
-  namespace {class file_periodic017_1278520190m670 : public Loci::pointwise_rule {
+  namespace {class file_periodic017_1280810708m72 : public Loci::pointwise_rule {
 #line 130 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 130 "periodic.loci"
@@ -1357,7 +1357,7 @@ Loci::register_rule<file_periodic016_1278520190m670> register_file_periodic016_1
 #line 130 "periodic.loci"
 public:
 #line 130 "periodic.loci"
-    file_periodic017_1278520190m670() {
+    file_periodic017_1280810708m72() {
 #line 130 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 130 "periodic.loci"
@@ -1384,7 +1384,7 @@ public:
 #line 132 "periodic.loci"
 } ;
 #line 132 "periodic.loci"
-Loci::register_rule<file_periodic017_1278520190m670> register_file_periodic017_1278520190m670 ;
+Loci::register_rule<file_periodic017_1280810708m72> register_file_periodic017_1280810708m72 ;
 #line 132 "periodic.loci"
 }
 #line 132 "periodic.loci"
@@ -1392,7 +1392,7 @@ Loci::register_rule<file_periodic017_1278520190m670> register_file_periodic017_1
 
   // Updated total enthalpy.
   // $type hStar store<real> 
-  namespace {class file_periodic018_1278520190m671 : public Loci::pointwise_rule {
+  namespace {class file_periodic018_1280810708m73 : public Loci::pointwise_rule {
 #line 136 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 136 "periodic.loci"
@@ -1404,7 +1404,7 @@ Loci::register_rule<file_periodic017_1278520190m670> register_file_periodic017_1
 #line 136 "periodic.loci"
 public:
 #line 136 "periodic.loci"
-    file_periodic018_1278520190m671() {
+    file_periodic018_1280810708m73() {
 #line 136 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 136 "periodic.loci"
@@ -1431,7 +1431,7 @@ public:
 #line 138 "periodic.loci"
 } ;
 #line 138 "periodic.loci"
-Loci::register_rule<file_periodic018_1278520190m671> register_file_periodic018_1278520190m671 ;
+Loci::register_rule<file_periodic018_1280810708m73> register_file_periodic018_1280810708m73 ;
 #line 138 "periodic.loci"
 }
 #line 138 "periodic.loci"
@@ -1439,7 +1439,7 @@ Loci::register_rule<file_periodic018_1278520190m671> register_file_periodic018_1
 
   // K initial condition.
   // $type k_ic store<real> 
-  namespace {class file_periodic019_1278520190m671 : public Loci::pointwise_rule {
+  namespace {class file_periodic019_1280810708m73 : public Loci::pointwise_rule {
 #line 142 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 142 "periodic.loci"
@@ -1451,7 +1451,7 @@ Loci::register_rule<file_periodic018_1278520190m671> register_file_periodic018_1
 #line 142 "periodic.loci"
 public:
 #line 142 "periodic.loci"
-    file_periodic019_1278520190m671() {
+    file_periodic019_1280810708m73() {
 #line 142 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 142 "periodic.loci"
@@ -1478,7 +1478,7 @@ public:
 #line 144 "periodic.loci"
 } ;
 #line 144 "periodic.loci"
-Loci::register_rule<file_periodic019_1278520190m671> register_file_periodic019_1278520190m671 ;
+Loci::register_rule<file_periodic019_1280810708m73> register_file_periodic019_1280810708m73 ;
 #line 144 "periodic.loci"
 }
 #line 144 "periodic.loci"
@@ -1486,7 +1486,7 @@ Loci::register_rule<file_periodic019_1278520190m671> register_file_periodic019_1
 
   // K.
   // $type k store<real> 
-  namespace {class file_periodic020_1278520190m672 : public Loci::pointwise_rule {
+  namespace {class file_periodic020_1280810708m74 : public Loci::pointwise_rule {
 #line 148 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 148 "periodic.loci"
@@ -1498,7 +1498,7 @@ Loci::register_rule<file_periodic019_1278520190m671> register_file_periodic019_1
 #line 148 "periodic.loci"
 public:
 #line 148 "periodic.loci"
-    file_periodic020_1278520190m672() {
+    file_periodic020_1280810708m74() {
 #line 148 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 148 "periodic.loci"
@@ -1525,7 +1525,7 @@ public:
 #line 150 "periodic.loci"
 } ;
 #line 150 "periodic.loci"
-Loci::register_rule<file_periodic020_1278520190m672> register_file_periodic020_1278520190m672 ;
+Loci::register_rule<file_periodic020_1280810708m74> register_file_periodic020_1280810708m74 ;
 #line 150 "periodic.loci"
 }
 #line 150 "periodic.loci"
@@ -1533,7 +1533,7 @@ Loci::register_rule<file_periodic020_1278520190m672> register_file_periodic020_1
 
   // Updated k.
   // $type kStar store<real> 
-  namespace {class file_periodic021_1278520190m672 : public Loci::pointwise_rule {
+  namespace {class file_periodic021_1280810708m74 : public Loci::pointwise_rule {
 #line 154 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 154 "periodic.loci"
@@ -1545,7 +1545,7 @@ Loci::register_rule<file_periodic020_1278520190m672> register_file_periodic020_1
 #line 154 "periodic.loci"
 public:
 #line 154 "periodic.loci"
-    file_periodic021_1278520190m672() {
+    file_periodic021_1280810708m74() {
 #line 154 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 154 "periodic.loci"
@@ -1572,7 +1572,7 @@ public:
 #line 156 "periodic.loci"
 } ;
 #line 156 "periodic.loci"
-Loci::register_rule<file_periodic021_1278520190m672> register_file_periodic021_1278520190m672 ;
+Loci::register_rule<file_periodic021_1280810708m74> register_file_periodic021_1280810708m74 ;
 #line 156 "periodic.loci"
 }
 #line 156 "periodic.loci"
@@ -1580,7 +1580,7 @@ Loci::register_rule<file_periodic021_1278520190m672> register_file_periodic021_1
 
   // Omega initial condition.
   // $type omega_ic store<real> 
-  namespace {class file_periodic022_1278520190m672 : public Loci::pointwise_rule {
+  namespace {class file_periodic022_1280810708m75 : public Loci::pointwise_rule {
 #line 160 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 160 "periodic.loci"
@@ -1592,7 +1592,7 @@ Loci::register_rule<file_periodic021_1278520190m672> register_file_periodic021_1
 #line 160 "periodic.loci"
 public:
 #line 160 "periodic.loci"
-    file_periodic022_1278520190m672() {
+    file_periodic022_1280810708m75() {
 #line 160 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 160 "periodic.loci"
@@ -1619,7 +1619,7 @@ public:
 #line 162 "periodic.loci"
 } ;
 #line 162 "periodic.loci"
-Loci::register_rule<file_periodic022_1278520190m672> register_file_periodic022_1278520190m672 ;
+Loci::register_rule<file_periodic022_1280810708m75> register_file_periodic022_1280810708m75 ;
 #line 162 "periodic.loci"
 }
 #line 162 "periodic.loci"
@@ -1627,7 +1627,7 @@ Loci::register_rule<file_periodic022_1278520190m672> register_file_periodic022_1
 
   // Omega.
   // $type omega store<real> 
-  namespace {class file_periodic023_1278520190m673 : public Loci::pointwise_rule {
+  namespace {class file_periodic023_1280810708m75 : public Loci::pointwise_rule {
 #line 166 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 166 "periodic.loci"
@@ -1639,7 +1639,7 @@ Loci::register_rule<file_periodic022_1278520190m672> register_file_periodic022_1
 #line 166 "periodic.loci"
 public:
 #line 166 "periodic.loci"
-    file_periodic023_1278520190m673() {
+    file_periodic023_1280810708m75() {
 #line 166 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 166 "periodic.loci"
@@ -1666,7 +1666,7 @@ public:
 #line 168 "periodic.loci"
 } ;
 #line 168 "periodic.loci"
-Loci::register_rule<file_periodic023_1278520190m673> register_file_periodic023_1278520190m673 ;
+Loci::register_rule<file_periodic023_1280810708m75> register_file_periodic023_1280810708m75 ;
 #line 168 "periodic.loci"
 }
 #line 168 "periodic.loci"
@@ -1674,7 +1674,7 @@ Loci::register_rule<file_periodic023_1278520190m673> register_file_periodic023_1
 
   // Updated omega.
   // $type omegaStar store<real> 
-  namespace {class file_periodic024_1278520190m673 : public Loci::pointwise_rule {
+  namespace {class file_periodic024_1280810708m76 : public Loci::pointwise_rule {
 #line 172 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 172 "periodic.loci"
@@ -1686,7 +1686,7 @@ Loci::register_rule<file_periodic023_1278520190m673> register_file_periodic023_1
 #line 172 "periodic.loci"
 public:
 #line 172 "periodic.loci"
-    file_periodic024_1278520190m673() {
+    file_periodic024_1280810708m76() {
 #line 172 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 172 "periodic.loci"
@@ -1713,7 +1713,7 @@ public:
 #line 174 "periodic.loci"
 } ;
 #line 174 "periodic.loci"
-Loci::register_rule<file_periodic024_1278520190m673> register_file_periodic024_1278520190m673 ;
+Loci::register_rule<file_periodic024_1280810708m76> register_file_periodic024_1280810708m76 ;
 #line 174 "periodic.loci"
 }
 #line 174 "periodic.loci"
@@ -1721,7 +1721,7 @@ Loci::register_rule<file_periodic024_1278520190m673> register_file_periodic024_1
 
   // F1.
   // $type f1 store<real> 
-  namespace {class file_periodic025_1278520190m673 : public Loci::pointwise_rule {
+  namespace {class file_periodic025_1280810708m76 : public Loci::pointwise_rule {
 #line 178 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 178 "periodic.loci"
@@ -1733,7 +1733,7 @@ Loci::register_rule<file_periodic024_1278520190m673> register_file_periodic024_1
 #line 178 "periodic.loci"
 public:
 #line 178 "periodic.loci"
-    file_periodic025_1278520190m673() {
+    file_periodic025_1280810708m76() {
 #line 178 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 178 "periodic.loci"
@@ -1760,7 +1760,7 @@ public:
 #line 180 "periodic.loci"
 } ;
 #line 180 "periodic.loci"
-Loci::register_rule<file_periodic025_1278520190m673> register_file_periodic025_1278520190m673 ;
+Loci::register_rule<file_periodic025_1280810708m76> register_file_periodic025_1280810708m76 ;
 #line 180 "periodic.loci"
 }
 #line 180 "periodic.loci"
@@ -1768,7 +1768,7 @@ Loci::register_rule<file_periodic025_1278520190m673> register_file_periodic025_1
 
   // F2.
   // $type f2 store<real> 
-  namespace {class file_periodic026_1278520190m674 : public Loci::pointwise_rule {
+  namespace {class file_periodic026_1280810708m77 : public Loci::pointwise_rule {
 #line 184 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 184 "periodic.loci"
@@ -1780,7 +1780,7 @@ Loci::register_rule<file_periodic025_1278520190m673> register_file_periodic025_1
 #line 184 "periodic.loci"
 public:
 #line 184 "periodic.loci"
-    file_periodic026_1278520190m674() {
+    file_periodic026_1280810708m77() {
 #line 184 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 184 "periodic.loci"
@@ -1807,7 +1807,7 @@ public:
 #line 186 "periodic.loci"
 } ;
 #line 186 "periodic.loci"
-Loci::register_rule<file_periodic026_1278520190m674> register_file_periodic026_1278520190m674 ;
+Loci::register_rule<file_periodic026_1280810708m77> register_file_periodic026_1280810708m77 ;
 #line 186 "periodic.loci"
 }
 #line 186 "periodic.loci"
@@ -1815,7 +1815,7 @@ Loci::register_rule<file_periodic026_1278520190m674> register_file_periodic026_1
 
   // Species initial condition.
   // $type y_ic storeVec<real> 
-  namespace {class file_periodic027_1278520190m674 : public Loci::pointwise_rule {
+  namespace {class file_periodic027_1280810708m78 : public Loci::pointwise_rule {
 #line 190 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 190 "periodic.loci"
@@ -1827,7 +1827,7 @@ Loci::register_rule<file_periodic026_1278520190m674> register_file_periodic026_1
 #line 190 "periodic.loci"
 public:
 #line 190 "periodic.loci"
-    file_periodic027_1278520190m674() {
+    file_periodic027_1280810708m78() {
 #line 190 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 190 "periodic.loci"
@@ -1854,7 +1854,7 @@ public:
 #line 192 "periodic.loci"
 } ;
 #line 192 "periodic.loci"
-Loci::register_rule<file_periodic027_1278520190m674> register_file_periodic027_1278520190m674 ;
+Loci::register_rule<file_periodic027_1280810708m78> register_file_periodic027_1280810708m78 ;
 #line 192 "periodic.loci"
 }
 #line 192 "periodic.loci"
@@ -1862,7 +1862,7 @@ Loci::register_rule<file_periodic027_1278520190m674> register_file_periodic027_1
 
   // Species.
   // $type y storeVec<real> 
-  namespace {class file_periodic028_1278520190m674 : public Loci::pointwise_rule {
+  namespace {class file_periodic028_1280810708m78 : public Loci::pointwise_rule {
 #line 196 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 196 "periodic.loci"
@@ -1874,7 +1874,7 @@ Loci::register_rule<file_periodic027_1278520190m674> register_file_periodic027_1
 #line 196 "periodic.loci"
 public:
 #line 196 "periodic.loci"
-    file_periodic028_1278520190m674() {
+    file_periodic028_1280810708m78() {
 #line 196 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 196 "periodic.loci"
@@ -1901,7 +1901,7 @@ public:
 #line 198 "periodic.loci"
 } ;
 #line 198 "periodic.loci"
-Loci::register_rule<file_periodic028_1278520190m674> register_file_periodic028_1278520190m674 ;
+Loci::register_rule<file_periodic028_1280810708m78> register_file_periodic028_1280810708m78 ;
 #line 198 "periodic.loci"
 }
 #line 198 "periodic.loci"
@@ -1909,7 +1909,7 @@ Loci::register_rule<file_periodic028_1278520190m674> register_file_periodic028_1
 
   // Current species.
   // $type yCurr store<real> 
-  namespace {class file_periodic029_1278520190m675 : public Loci::pointwise_rule {
+  namespace {class file_periodic029_1280810708m79 : public Loci::pointwise_rule {
 #line 202 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 202 "periodic.loci"
@@ -1921,7 +1921,7 @@ Loci::register_rule<file_periodic028_1278520190m674> register_file_periodic028_1
 #line 202 "periodic.loci"
 public:
 #line 202 "periodic.loci"
-    file_periodic029_1278520190m675() {
+    file_periodic029_1280810708m79() {
 #line 202 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 202 "periodic.loci"
@@ -1948,7 +1948,7 @@ public:
 #line 204 "periodic.loci"
 } ;
 #line 204 "periodic.loci"
-Loci::register_rule<file_periodic029_1278520190m675> register_file_periodic029_1278520190m675 ;
+Loci::register_rule<file_periodic029_1280810708m79> register_file_periodic029_1280810708m79 ;
 #line 204 "periodic.loci"
 }
 #line 204 "periodic.loci"
@@ -1956,7 +1956,7 @@ Loci::register_rule<file_periodic029_1278520190m675> register_file_periodic029_1
 
   // Updated species.
   // $type yCurrStar store<real> 
-  namespace {class file_periodic030_1278520190m675 : public Loci::pointwise_rule {
+  namespace {class file_periodic030_1280810708m80 : public Loci::pointwise_rule {
 #line 208 "periodic.loci"
     Loci::const_Map L_cl_ ; 
 #line 208 "periodic.loci"
@@ -1968,7 +1968,7 @@ Loci::register_rule<file_periodic029_1278520190m675> register_file_periodic029_1
 #line 208 "periodic.loci"
 public:
 #line 208 "periodic.loci"
-    file_periodic030_1278520190m675() {
+    file_periodic030_1280810708m80() {
 #line 208 "periodic.loci"
        name_store("cl",L_cl_) ;
 #line 208 "periodic.loci"
@@ -1995,7 +1995,7 @@ public:
 #line 210 "periodic.loci"
 } ;
 #line 210 "periodic.loci"
-Loci::register_rule<file_periodic030_1278520190m675> register_file_periodic030_1278520190m675 ;
+Loci::register_rule<file_periodic030_1280810708m80> register_file_periodic030_1280810708m80 ;
 #line 210 "periodic.loci"
 }
 #line 210 "periodic.loci"

@@ -13,13 +13,13 @@
 namespace streamUns {
 
   // $type hypreCoarsenType param<int> 
-  namespace {class file_hypre000_1278520193m170 : public Loci::default_rule {
+  namespace {class file_hypre000_1280810716m905 : public Loci::default_rule {
 #line 19 "hypre.loci"
     Loci::param<int>  L_hypreCoarsenType_ ; 
 #line 19 "hypre.loci"
 public:
 #line 19 "hypre.loci"
-    file_hypre000_1278520193m170() {
+    file_hypre000_1280810716m905() {
 #line 19 "hypre.loci"
        name_store("hypreCoarsenType",L_hypreCoarsenType_) ;
 #line 19 "hypre.loci"
@@ -39,20 +39,20 @@ public:
     (*L_hypreCoarsenType_)=6 ;
   }} ;
 #line 21 "hypre.loci"
-Loci::register_rule<file_hypre000_1278520193m170> register_file_hypre000_1278520193m170 ;
+Loci::register_rule<file_hypre000_1280810716m905> register_file_hypre000_1280810716m905 ;
 #line 21 "hypre.loci"
 }
 #line 21 "hypre.loci"
 
 
   // $type hypreRelaxType param<int> 
-  namespace {class file_hypre001_1278520193m171 : public Loci::default_rule {
+  namespace {class file_hypre001_1280810716m906 : public Loci::default_rule {
 #line 28 "hypre.loci"
     Loci::param<int>  L_hypreRelaxType_ ; 
 #line 28 "hypre.loci"
 public:
 #line 28 "hypre.loci"
-    file_hypre001_1278520193m171() {
+    file_hypre001_1280810716m906() {
 #line 28 "hypre.loci"
        name_store("hypreRelaxType",L_hypreRelaxType_) ;
 #line 28 "hypre.loci"
@@ -72,20 +72,20 @@ public:
     (*L_hypreRelaxType_)=3 ;
   }} ;
 #line 30 "hypre.loci"
-Loci::register_rule<file_hypre001_1278520193m171> register_file_hypre001_1278520193m171 ;
+Loci::register_rule<file_hypre001_1280810716m906> register_file_hypre001_1280810716m906 ;
 #line 30 "hypre.loci"
 }
 #line 30 "hypre.loci"
 
 
   // $type hypreConvergenceTolerance param<real> 
-  namespace {class file_hypre002_1278520193m171 : public Loci::default_rule {
+  namespace {class file_hypre002_1280810716m906 : public Loci::default_rule {
 #line 34 "hypre.loci"
     Loci::param<real>  L_hypreConvergenceTolerance_ ; 
 #line 34 "hypre.loci"
 public:
 #line 34 "hypre.loci"
-    file_hypre002_1278520193m171() {
+    file_hypre002_1280810716m906() {
 #line 34 "hypre.loci"
        name_store("hypreConvergenceTolerance",L_hypreConvergenceTolerance_) ;
 #line 34 "hypre.loci"
@@ -99,20 +99,20 @@ public:
     (*L_hypreConvergenceTolerance_)=1.0e-03 ;
   }} ;
 #line 36 "hypre.loci"
-Loci::register_rule<file_hypre002_1278520193m171> register_file_hypre002_1278520193m171 ;
+Loci::register_rule<file_hypre002_1280810716m906> register_file_hypre002_1280810716m906 ;
 #line 36 "hypre.loci"
 }
 #line 36 "hypre.loci"
 
 
   // $type hypreStrongThreshold param<real> 
-  namespace {class file_hypre003_1278520193m171 : public Loci::default_rule {
+  namespace {class file_hypre003_1280810716m906 : public Loci::default_rule {
 #line 41 "hypre.loci"
     Loci::param<real>  L_hypreStrongThreshold_ ; 
 #line 41 "hypre.loci"
 public:
 #line 41 "hypre.loci"
-    file_hypre003_1278520193m171() {
+    file_hypre003_1280810716m906() {
 #line 41 "hypre.loci"
        name_store("hypreStrongThreshold",L_hypreStrongThreshold_) ;
 #line 41 "hypre.loci"
@@ -128,20 +128,20 @@ public:
     (*L_hypreStrongThreshold_)=0.5 ;
   }} ;
 #line 43 "hypre.loci"
-Loci::register_rule<file_hypre003_1278520193m171> register_file_hypre003_1278520193m171 ;
+Loci::register_rule<file_hypre003_1280810716m906> register_file_hypre003_1280810716m906 ;
 #line 43 "hypre.loci"
 }
 #line 43 "hypre.loci"
 
 
   // $type hypreMaxRowSum param<real> 
-  namespace {class file_hypre004_1278520193m172 : public Loci::default_rule {
+  namespace {class file_hypre004_1280810716m907 : public Loci::default_rule {
 #line 47 "hypre.loci"
     Loci::param<real>  L_hypreMaxRowSum_ ; 
 #line 47 "hypre.loci"
 public:
 #line 47 "hypre.loci"
-    file_hypre004_1278520193m172() {
+    file_hypre004_1280810716m907() {
 #line 47 "hypre.loci"
        name_store("hypreMaxRowSum",L_hypreMaxRowSum_) ;
 #line 47 "hypre.loci"
@@ -157,20 +157,20 @@ public:
     (*L_hypreMaxRowSum_)=0.9 ;
   }} ;
 #line 49 "hypre.loci"
-Loci::register_rule<file_hypre004_1278520193m172> register_file_hypre004_1278520193m172 ;
+Loci::register_rule<file_hypre004_1280810716m907> register_file_hypre004_1280810716m907 ;
 #line 49 "hypre.loci"
 }
 #line 49 "hypre.loci"
 
 
   // $type hypreMaxLevels param<int> 
-  namespace {class file_hypre005_1278520193m172 : public Loci::default_rule {
+  namespace {class file_hypre005_1280810716m907 : public Loci::default_rule {
 #line 53 "hypre.loci"
     Loci::param<int>  L_hypreMaxLevels_ ; 
 #line 53 "hypre.loci"
 public:
 #line 53 "hypre.loci"
-    file_hypre005_1278520193m172() {
+    file_hypre005_1280810716m907() {
 #line 53 "hypre.loci"
        name_store("hypreMaxLevels",L_hypreMaxLevels_) ;
 #line 53 "hypre.loci"
@@ -184,20 +184,20 @@ public:
     (*L_hypreMaxLevels_)=16 ;
   }} ;
 #line 55 "hypre.loci"
-Loci::register_rule<file_hypre005_1278520193m172> register_file_hypre005_1278520193m172 ;
+Loci::register_rule<file_hypre005_1280810716m907> register_file_hypre005_1280810716m907 ;
 #line 55 "hypre.loci"
 }
 #line 55 "hypre.loci"
 
 
   // $type hypreNumSweeps param<int> 
-  namespace {class file_hypre006_1278520193m172 : public Loci::default_rule {
+  namespace {class file_hypre006_1280810716m908 : public Loci::default_rule {
 #line 59 "hypre.loci"
     Loci::param<int>  L_hypreNumSweeps_ ; 
 #line 59 "hypre.loci"
 public:
 #line 59 "hypre.loci"
-    file_hypre006_1278520193m172() {
+    file_hypre006_1280810716m908() {
 #line 59 "hypre.loci"
        name_store("hypreNumSweeps",L_hypreNumSweeps_) ;
 #line 59 "hypre.loci"
@@ -211,7 +211,7 @@ public:
     (*L_hypreNumSweeps_)=1 ;
   }} ;
 #line 61 "hypre.loci"
-Loci::register_rule<file_hypre006_1278520193m172> register_file_hypre006_1278520193m172 ;
+Loci::register_rule<file_hypre006_1280810716m908> register_file_hypre006_1280810716m908 ;
 #line 61 "hypre.loci"
 }
 #line 61 "hypre.loci"

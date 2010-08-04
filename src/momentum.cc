@@ -845,7 +845,10 @@ namespace streamUns {
       }
 
       // Calculate face velocity for a single face.
-      void calculate(Entity face) { v_f[face]=vect3d(0.0,0.0,0.0) ; }
+      void calculate(Entity face) { 
+	v_f[face]=vect3d(0.0,0.0,0.0) ; 
+	cout << "face_v=v_f=momentum" << v_f[face] << endl ;
+      }
 
       // Calculate face velocity for all faces in sequence.
       virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
