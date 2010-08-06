@@ -475,7 +475,7 @@ namespace streamUns {
 // $type CFDIterationFinished param<bool> 
 // $type ncycle param<int> 
 
-namespace {class file_FSI_CSD2CFD000_1280803848m631 : public Loci::blackbox_rule {
+namespace {class file_FSI_CSD2CFD000_1281067981m562 : public Loci::blackbox_rule {
 #line 366 "FSI_CSD2CFD.loci"
     Loci::const_param<real>  L_FSICSD2CFDRBFr_ ; 
 #line 366 "FSI_CSD2CFD.loci"
@@ -499,7 +499,7 @@ namespace {class file_FSI_CSD2CFD000_1280803848m631 : public Loci::blackbox_rule
 #line 366 "FSI_CSD2CFD.loci"
 public:
 #line 366 "FSI_CSD2CFD.loci"
-    file_FSI_CSD2CFD000_1280803848m631() {
+    file_FSI_CSD2CFD000_1281067981m562() {
 #line 366 "FSI_CSD2CFD.loci"
        name_store("FSICSD2CFDRBFr",L_FSICSD2CFDRBFr_) ;
 #line 366 "FSI_CSD2CFD.loci"
@@ -561,7 +561,7 @@ public:
 			valuey=(*L_CSDdisplacementsStar_nit__)(i,1);
 			valuez=(*L_CSDdisplacementsStar_nit__)(i,2);
 			FSI_RHS_vector.SetValue(&i, &valuex, &valuey, &valuez) ;
-		//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: RHS, i = " << i << ", valuex = " << valuex << ", valuey = " << valuey << ", valuez = " << valuez << ", CSDnodes.x = " << (*$CSDnodes_ic)(i,0) << ", CSDnodes.y = " << (*$CSDnodes_ic)(i,1) << ", CSDnodes.z = " << (*$CSDnodes_ic)(i,2) << endl ;
+			cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: RHS, i = " << i << ", valuex = " << valuex << ", valuey = " << valuey << ", valuez = " << valuez << ", CSDnodes.x = " << (*L_CSDnodes_ic_)(i,0) << ", CSDnodes.y = " << (*L_CSDnodes_ic_)(i,1) << ", CSDnodes.z = " << (*L_CSDnodes_ic_)(i,2) << endl ;
 		}
 
 		int tempTimeStepNumber = (*L_ncycle_n__) ;
@@ -617,7 +617,7 @@ public:
 				distance += pow((*L_CSDnodes_ic_)(i,1) - (*L_CSDnodes_ic_)(j,1), 2.) ;
 				distance += pow((*L_CSDnodes_ic_)(i,2) - (*L_CSDnodes_ic_)(j,2), 2.) ;
 				distance = sqrt(distance) ;
-				if ( !( (rbfNumber > 0 && rbfNumber < 9) && (distance/r > 1.)) ) {
+				if ( !( (rbfNumber > 0 && rbfNumber < 9) && (distance/r > 1.) ) ) {
 					valuex = radialBasisFunction(distance, r, a, rbfNumber) ;
 					columnIndex=j; //columnValue=valuex ;
 					FSI_A_matrix.SetRowValues(i,1,&columnIndex,&valuex);
@@ -679,14 +679,14 @@ public:
 #line 508 "FSI_CSD2CFD.loci"
 } ;
 #line 508 "FSI_CSD2CFD.loci"
-Loci::register_rule<file_FSI_CSD2CFD000_1280803848m631> register_file_FSI_CSD2CFD000_1280803848m631 ;
+Loci::register_rule<file_FSI_CSD2CFD000_1281067981m562> register_file_FSI_CSD2CFD000_1281067981m562 ;
 #line 508 "FSI_CSD2CFD.loci"
 }
 #line 508 "FSI_CSD2CFD.loci"
 // $type pos store<vect3d> 
 // $type node_s_b_flex store<vect3d> 
 
-namespace {class file_FSI_CSD2CFD001_1280803848m635 : public Loci::pointwise_rule {
+namespace {class file_FSI_CSD2CFD001_1281067981m565 : public Loci::pointwise_rule {
 #line 513 "FSI_CSD2CFD.loci"
     Loci::const_param<int>  L_CSDdimension_ ; 
 #line 513 "FSI_CSD2CFD.loci"
@@ -714,7 +714,7 @@ namespace {class file_FSI_CSD2CFD001_1280803848m635 : public Loci::pointwise_rul
 #line 513 "FSI_CSD2CFD.loci"
 public:
 #line 513 "FSI_CSD2CFD.loci"
-    file_FSI_CSD2CFD001_1280803848m635() {
+    file_FSI_CSD2CFD001_1281067981m565() {
 #line 513 "FSI_CSD2CFD.loci"
        name_store("CSDdimension",L_CSDdimension_) ;
 #line 513 "FSI_CSD2CFD.loci"
@@ -750,10 +750,10 @@ public:
 #line 513 "FSI_CSD2CFD.loci"
     }
 #line 513 "FSI_CSD2CFD.loci"
-    void calculate(Entity _e_) { 
-#line 514 "FSI_CSD2CFD.loci"
-
-	if (Loci ::MPI_rank ==0) cout << "node_s_b_flex{n,it}<-pos, CFDIterationFinished = " << (L_CFDIterationFinished_nit_M_1__[_e_]) << endl ; 		  
+    void prelude(const Loci::sequence &seq) { 
+	if (Loci::MPI_rank==0) cout << "node_s_b_flex{n,it}<-pos, CFDIterationFinished = " << (*L_CFDIterationFinished_nit_M_1__) << endl ; 		  
+  }    void calculate(Entity _e_) { 
+#line 516 "FSI_CSD2CFD.loci"
 	if (L_CFDIterationFinished_nit_M_1__[_e_]) {
 
 		//int p = Loci::MPI_processes; 
@@ -823,13 +823,15 @@ public:
 	} // CFDIterationFinished
 	}    void compute(const Loci::sequence &seq) { 
 #line 583 "FSI_CSD2CFD.loci"
+      prelude(seq) ;
+#line 583 "FSI_CSD2CFD.loci"
       do_loop(seq,this) ;
 #line 583 "FSI_CSD2CFD.loci"
     }
 #line 583 "FSI_CSD2CFD.loci"
 } ;
 #line 583 "FSI_CSD2CFD.loci"
-Loci::register_rule<file_FSI_CSD2CFD001_1280803848m635> register_file_FSI_CSD2CFD001_1280803848m635 ;
+Loci::register_rule<file_FSI_CSD2CFD001_1281067981m565> register_file_FSI_CSD2CFD001_1281067981m565 ;
 #line 583 "FSI_CSD2CFD.loci"
 }
 #line 583 "FSI_CSD2CFD.loci"

@@ -235,7 +235,7 @@ t = timestep
 !      sol(1,1) = plungeAmp * ( cos(2 * PI * freq * sTime) )
     elseif (plungingType==3) then
       sol(1,1) = plungeAmp * ( -1.0d0 + cos(2 * PI * freq * sTime) )
-      if (rank==0) print*, '[I] EulerBeam1D: Cos - 1 motion'
+      if (rank==0) print*, '[I] EulerBeam1D: Cos - 1 motion -> at the root the displacement is ', sol(1,1)
     endif
 
      sol(2,1) = flapAmp * ( sin(2 * PI * freq * sTime) )

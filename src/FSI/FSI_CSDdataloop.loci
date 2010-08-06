@@ -806,7 +806,7 @@ $rule blackbox(CSDdisplacementsStar{n,it},CSDxStar{n,it},CSDxdotStar{n,it},CSDxd
 			 if (rank==0) cout << "CSDstartingTime not yet reached. Current time step = " << *$ncycle{n} << ", CSDstartingTimeStep = " << *$CSDstartingTimeStep << endl ;
 		} else {	
 		  
-		  if (itcurrent > 1) { // bypass the first iterations
+		  if (itcurrent > 2) { // bypass the first two iterations
 			int tempTimeStepNumber = *$ncycle{n} - *$CSDstartingTimeStep + 1 ;	
 				
 			ublas::vector<real> CSDbeam1dForce(CSDNumNodes) ;	std::fill(CSDbeam1dForce.begin(), CSDbeam1dForce.end(), 0.0) ;

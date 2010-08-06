@@ -81,6 +81,7 @@ namespace streamUns {
         if(created) return 0 ;
         int ierr=VecCreate(PETSC_COMM_WORLD,&v) ; CHKERRQ(ierr) ;
         ierr=VecSetSizes(v,localSize,globalSize) ; CHKERRQ(ierr) ;
+	//ierr=VecSetSizes(v,PETSC_DECIDE,globalSize) ; CHKERRQ(ierr) ;
         ierr=VecSetFromOptions(v) ; CHKERRQ(ierr) ;
         created=true ; return 0 ;
       }
@@ -134,12 +135,15 @@ namespace streamUns {
 		}
         int ierr=VecCreate(PETSC_COMM_WORLD,&vX) ; CHKERRQ(ierr) ;
         ierr=VecSetSizes(vX,localSize,globalSize) ; CHKERRQ(ierr) ;
+	//ierr=VecSetSizes(vX,PETSC_DECIDE,globalSize) ; CHKERRQ(ierr) ;
         ierr=VecSetFromOptions(vX) ; CHKERRQ(ierr) ;
         ierr=VecCreate(PETSC_COMM_WORLD,&vY) ; CHKERRQ(ierr) ;
         ierr=VecSetSizes(vY,localSize,globalSize) ; CHKERRQ(ierr) ;
+	//ierr=VecSetSizes(vY,PETSC_DECIDE,globalSize) ; CHKERRQ(ierr) ;
         ierr=VecSetFromOptions(vY) ; CHKERRQ(ierr) ;
         ierr=VecCreate(PETSC_COMM_WORLD,&vZ) ; CHKERRQ(ierr) ;
         ierr=VecSetSizes(vZ,localSize,globalSize) ; CHKERRQ(ierr) ;
+	//ierr=VecSetSizes(vZ,PETSC_DECIDE,globalSize) ; CHKERRQ(ierr) ;
         ierr=VecSetFromOptions(vZ) ; CHKERRQ(ierr) ;
         created=true ; return 0 ;
       }
@@ -209,6 +213,9 @@ namespace streamUns {
           ierr=MatCreateMPIAIJ(PETSC_COMM_WORLD,numLocalRow,numLocalRow,
             numGlobalRow,numGlobalRow,0,numDiagonalNonZero,0,
             numOffDiagonalNonZero,&m) ; CHKERRQ(ierr) ;
+// 	    ierr=MatCreateMPIAIJ(PETSC_COMM_WORLD,PETSC_DECIDE,PETSC_DECIDE,
+//             numGlobalRow,numGlobalRow,0,numDiagonalNonZero,0,
+//             numOffDiagonalNonZero,&m) ; CHKERRQ(ierr) ;
         }else{
           ierr=MatCreateSeqAIJ(PETSC_COMM_WORLD,numGlobalRow,numGlobalRow,
             0,numDiagonalNonZero,&m) ; CHKERRQ(ierr) ;
@@ -553,7 +560,7 @@ namespace streamUns {
 							valuex=B[*nodePtr].x;
 							valuey=B[*nodePtr].y;
 							valuez=B[*nodePtr].z;
-	//						cout << "rank, i,B.x,valuex,valuey " << Loci::MPI_rank << ", " << counter << ", " << B[*nodePtr].x << ", " << valuex << delim << B[*nodePtr].y << delim << valuey << endl;
+		//					cout << "rank, i,B.x,valuex,valuey " << Loci::MPI_rank << ", " << counter << ", " << B[*nodePtr].x << ", " << valuex << delim << B[*nodePtr].y << delim << valuey << endl;
 							(*b).SetValue(&counter,&valuex, &valuey, &valuez) ;
 					}		
 				//	if (Loci::MPI_rank==0) cout << "Remeshing: RHS assembled. " << endl ;
@@ -863,35 +870,35 @@ namespace streamUns {
       void compute(const sequence & seq) {
 
 	if (Loci::MPI_rank==0) cout << "PETSCBoundaryNodeSetupPhi = " << (*CFDIterationFinished) << endl ; 
-				if (*CFDIterationFinished) { 
+	if (*CFDIterationFinished) { 
 
-	        // Get the number of local and global nodes.
-	        int localNumNode=(*rbfNumBoundaryNode)[Loci::MPI_rank],globalNumNode=0 ;
-	        for(unsigned int i=0;i<(*rbfNumBoundaryNode).size();++i) globalNumNode+=(*rbfNumBoundaryNode)[i] ;
-			
-					// include the polynomial coeff. computation
-					if (Loci::MPI_rank == Loci::MPI_processes-1) { // last rank takes care of beta
-						localNumNode += 4; // d+1 = 4
-					}
-								
-					globalNumNode+=4; // for beta (d+1)
-					
-			        // Allocate the unknown and rhs vectors.
-					(*phi).Create(localNumNode,globalNumNode) ;
-					
-					double starttime, endtime;
-					// Solve the linear system
-				//	cout << "Remeshing: p,r: Start Solving" << Loci::MPI_processes << delim << Loci::MPI_rank << endl ;
-					starttime = MPI_Wtime();
-					(*ksp).SetOperators(*A) ; (*ksp).SolveVector(*b,*phi) ;
-					endtime = MPI_Wtime();
-					if (Loci::MPI_rank==0) cout << "Remeshing: p " << Loci::MPI_processes << delim << " solution time: " << endtime - starttime << " sec"  << endl ;
-					//Cout << "Remeshing: p,r: " << Loci::MPI_processes << delim << Loci::MPI_rank << delim << " solution time: " << endtime - starttime << " sec"  << endl ;
-					(*ksp).GetConvergedReason() ;
-					int its = (*ksp).GetIterationNumber() ;
-					if (Loci::MPI_rank==0) cout << "Remeshing: solve -> number of iterations: " << its << endl ;
-				} // CFDIterationFinished
-		  }
+	  // Get the number of local and global nodes.
+	  int localNumNode=(*rbfNumBoundaryNode)[Loci::MPI_rank],globalNumNode=0 ;
+	  for(unsigned int i=0;i<(*rbfNumBoundaryNode).size();++i) globalNumNode+=(*rbfNumBoundaryNode)[i] ;
+		  
+	      // include the polynomial coeff. computation
+	      if (Loci::MPI_rank == Loci::MPI_processes-1) { // last rank takes care of beta
+		    localNumNode += 4; // d+1 = 4
+	      }
+				      
+	      globalNumNode+=4; // for beta (d+1)
+	      
+      // Allocate the unknown and rhs vectors.
+	      (*phi).Create(localNumNode,globalNumNode) ;
+	      
+	      double starttime, endtime;
+	      // Solve the linear system
+      	cout << "Remeshing: p,r: Start Solving" << Loci::MPI_processes << delim << Loci::MPI_rank << endl ;
+	      starttime = MPI_Wtime();
+	      (*ksp).SetOperators(*A) ; (*ksp).SolveVector(*b,*phi) ;
+	      endtime = MPI_Wtime();
+	      if (Loci::MPI_rank==0) cout << "Remeshing: p " << Loci::MPI_processes << delim << " solution time: " << endtime - starttime << " sec"  << endl ;
+	      //Cout << "Remeshing: p,r: " << Loci::MPI_processes << delim << Loci::MPI_rank << delim << " solution time: " << endtime - starttime << " sec"  << endl ;
+	      (*ksp).GetConvergedReason() ;
+	      int its = (*ksp).GetIterationNumber() ;
+	      if (Loci::MPI_rank==0) cout << "Remeshing: solve -> number of iterations: " << its << endl ;
+      } // CFDIterationFinished
+	    }
   } ;
  
   register_rule<PETSCBoundaryNodeSetupPhi> registerPETSCBoundaryNodeSetupPhi ;
@@ -918,7 +925,7 @@ namespace streamUns {
         input("rbfNumBoundaryNode") ;
         output("petscBoundaryNodePhi{n,it}") ;
         constraint("sStar_PETSCLinearSolver");
-		constraint("boundaryDisplacement") ;
+	constraint("boundaryDisplacement") ;
         disable_threading() ;
       }
 
@@ -987,7 +994,7 @@ namespace streamUns {
         input("petscBoundaryNodePhi{n,it}") ;
         output("rbfBoundaryNodeWeight{n,it}") ;
         constraint("sStar_PETSCLinearSolver") ;
-		constraint("boundaryDisplacement");
+	constraint("boundaryDisplacement");
         disable_threading() ;
       }
 
@@ -1285,15 +1292,19 @@ namespace streamUns {
 	  // Loop over internal nodes and apply RBF interpolation
       void calculate(Entity node) {
       	sStar[node] = node_s_b_bc[node] ;
-      }
+// 	const double Tolerance = 1.0e-9 ;
+// 	sStar[node].x = ((fabs(node_s_b_bc[node].x) > Tolerance)? node_s_b_bc[node].x : 0.0) ;
+// 	sStar[node].y = ((fabs(node_s_b_bc[node].y) > Tolerance)? node_s_b_bc[node].y : 0.0) ;
+// 	sStar[node].z = ((fabs(node_s_b_bc[node].z) > Tolerance)? node_s_b_bc[node].z : 0.0) ;
+       }
 
       // Assemble and solve.
 	  virtual void compute(const sequence &seq) {
 	    if (Loci::MPI_rank==0) cout << "PETSCInternalNodeApplyBoundary = " << (*CFDIterationFinished) << endl ;
-	  	if (*CFDIterationFinished) { 
-					if (Loci::MPI_rank==0) cout << "[I] Remeshing: node_s_b_bc updated" << endl ;
-					do_loop(seq,this) ; 
-		}	  	
+	    if (*CFDIterationFinished) { 
+	      if (Loci::MPI_rank==0) cout << "[I] Remeshing: node_s_b_bc updated" << endl ;
+	      do_loop(seq,this) ; 
+	    }	  	
 	  }	
   } ;
 

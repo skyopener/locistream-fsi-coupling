@@ -786,6 +786,7 @@ namespace streamUns {
   class BoundaryVelocityboundaryDisplacementFaceGridMotion : public pointwise_rule {
     private:
       const_store<vect3d> face_v ;
+      const_store<vect3d> faceCenter ;
       store<vect3d> v_f ;
     public:
                                                                                 
@@ -793,7 +794,9 @@ namespace streamUns {
       BoundaryVelocityboundaryDisplacementFaceGridMotion() {
         name_store("face_v",face_v) ;
         name_store("gridMotion::v_f",v_f) ;
+	name_store("facecenter", faceCenter) ;
         input("face_v") ;
+	input("facecenter") ;
         output("gridMotion::v_f") ;
      //   constraint("boundaryDisplacementFace") ;
         constraint("faces") ;
@@ -803,7 +806,7 @@ namespace streamUns {
       // Calculate face velocity for a single face.
       void calculate(Entity face) { v_f[face]=face_v[face] ; 
       	//if (Loci::MPI_rank==0) 
-	  cout << "face_v=v_f=" << v_f[face] << endl ;
+	  cout << "faceCenter = " << faceCenter[face] << ", face_v=v_f= " << v_f[face] << endl ;
       	}
                                                                                 
       // Calculate face velocity for all faces in sequence.

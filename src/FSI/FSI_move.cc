@@ -522,7 +522,7 @@ namespace streamUns {
 //	$facecenter{n,it=0}=$facecenter{n};
 //}
 
-namespace {class file_FSI_move000_1280895646m606 : public Loci::pointwise_rule {
+namespace {class file_FSI_move000_1281069215m876 : public Loci::pointwise_rule {
 #line 524 "FSI_move.loci"
     Loci::const_store<vect3d>  L_facecenter_n__ ; 
 #line 524 "FSI_move.loci"
@@ -530,7 +530,7 @@ namespace {class file_FSI_move000_1280895646m606 : public Loci::pointwise_rule {
 #line 524 "FSI_move.loci"
 public:
 #line 524 "FSI_move.loci"
-    file_FSI_move000_1280895646m606() {
+    file_FSI_move000_1281069215m876() {
 #line 524 "FSI_move.loci"
        name_store("facecenter{n}",L_facecenter_n__) ;
 #line 524 "FSI_move.loci"
@@ -553,7 +553,7 @@ public:
 #line 526 "FSI_move.loci"
 } ;
 #line 526 "FSI_move.loci"
-Loci::register_rule<file_FSI_move000_1280895646m606> register_file_FSI_move000_1280895646m606 ;
+Loci::register_rule<file_FSI_move000_1281069215m876> register_file_FSI_move000_1281069215m876 ;
 #line 526 "FSI_move.loci"
 }
 #line 526 "FSI_move.loci"
@@ -836,7 +836,7 @@ Loci::register_rule<file_FSI_move000_1280895646m606> register_file_FSI_move000_1
 // $type node_sStar store<vect3d> 
 // $type sStar store<vect3d> 
 
-namespace {class file_FSI_move001_1280895646m611 : public Loci::pointwise_rule {
+namespace {class file_FSI_move001_1281069215m882 : public Loci::pointwise_rule {
 #line 805 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_sStar_n__ ; 
 #line 805 "FSI_move.loci"
@@ -844,7 +844,7 @@ namespace {class file_FSI_move001_1280895646m611 : public Loci::pointwise_rule {
 #line 805 "FSI_move.loci"
 public:
 #line 805 "FSI_move.loci"
-    file_FSI_move001_1280895646m611() {
+    file_FSI_move001_1281069215m882() {
 #line 805 "FSI_move.loci"
        name_store("node_sStar{n}",L_node_sStar_n__) ;
 #line 805 "FSI_move.loci"
@@ -869,13 +869,13 @@ public:
 #line 807 "FSI_move.loci"
 } ;
 #line 807 "FSI_move.loci"
-Loci::register_rule<file_FSI_move001_1280895646m611> register_file_FSI_move001_1280895646m611 ;
+Loci::register_rule<file_FSI_move001_1281069215m882> register_file_FSI_move001_1281069215m882 ;
 #line 807 "FSI_move.loci"
 }
 #line 807 "FSI_move.loci"
 
 
-namespace {class file_FSI_move002_1280895646m612 : public Loci::pointwise_rule {
+namespace {class file_FSI_move002_1281069215m883 : public Loci::pointwise_rule {
 #line 809 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_s_ic_ ; 
 #line 809 "FSI_move.loci"
@@ -883,7 +883,7 @@ namespace {class file_FSI_move002_1280895646m612 : public Loci::pointwise_rule {
 #line 809 "FSI_move.loci"
 public:
 #line 809 "FSI_move.loci"
-    file_FSI_move002_1280895646m612() {
+    file_FSI_move002_1281069215m883() {
 #line 809 "FSI_move.loci"
        name_store("node_s_ic",L_node_s_ic_) ;
 #line 809 "FSI_move.loci"
@@ -908,13 +908,13 @@ public:
 #line 811 "FSI_move.loci"
 } ;
 #line 811 "FSI_move.loci"
-Loci::register_rule<file_FSI_move002_1280895646m612> register_file_FSI_move002_1280895646m612 ;
+Loci::register_rule<file_FSI_move002_1281069215m883> register_file_FSI_move002_1281069215m883 ;
 #line 811 "FSI_move.loci"
 }
 #line 811 "FSI_move.loci"
 
 
-namespace {class file_FSI_move003_1280895646m613 : public Loci::pointwise_rule {
+namespace {class file_FSI_move003_1281069215m883 : public Loci::pointwise_rule {
 #line 813 "FSI_move.loci"
     Loci::const_store<vect3d>  L_sStar_n__ ; 
 #line 813 "FSI_move.loci"
@@ -922,7 +922,7 @@ namespace {class file_FSI_move003_1280895646m613 : public Loci::pointwise_rule {
 #line 813 "FSI_move.loci"
 public:
 #line 813 "FSI_move.loci"
-    file_FSI_move003_1280895646m613() {
+    file_FSI_move003_1281069215m883() {
 #line 813 "FSI_move.loci"
        name_store("node_sStar{n}",L_node_sStar_n__) ;
 #line 813 "FSI_move.loci"
@@ -947,7 +947,7 @@ public:
 #line 815 "FSI_move.loci"
 } ;
 #line 815 "FSI_move.loci"
-Loci::register_rule<file_FSI_move003_1280895646m613> register_file_FSI_move003_1280895646m613 ;
+Loci::register_rule<file_FSI_move003_1281069215m883> register_file_FSI_move003_1281069215m883 ;
 #line 815 "FSI_move.loci"
 }
 #line 815 "FSI_move.loci"
@@ -964,7 +964,7 @@ Loci::register_rule<file_FSI_move003_1280895646m613> register_file_FSI_move003_1
 // $type CFDIterationFinished param<bool> 
 // $type sMag store<float> 
 
-namespace {class file_FSI_move004_1280895646m613 : public Loci::pointwise_rule {
+namespace {class file_FSI_move004_1281069215m884 : public Loci::pointwise_rule {
 #line 828 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_s_ic_ ; 
 #line 828 "FSI_move.loci"
@@ -974,7 +974,7 @@ namespace {class file_FSI_move004_1280895646m613 : public Loci::pointwise_rule {
 #line 828 "FSI_move.loci"
 public:
 #line 828 "FSI_move.loci"
-    file_FSI_move004_1280895646m613() {
+    file_FSI_move004_1281069215m884() {
 #line 828 "FSI_move.loci"
        name_store("node_s_ic",L_node_s_ic_) ;
 #line 828 "FSI_move.loci"
@@ -999,13 +999,13 @@ public:
 #line 830 "FSI_move.loci"
 } ;
 #line 830 "FSI_move.loci"
-Loci::register_rule<file_FSI_move004_1280895646m613> register_file_FSI_move004_1280895646m613 ;
+Loci::register_rule<file_FSI_move004_1281069215m884> register_file_FSI_move004_1281069215m884 ;
 #line 830 "FSI_move.loci"
 }
 #line 830 "FSI_move.loci"
 
 
-namespace {class file_FSI_move005_1280895646m614 : public Loci::pointwise_rule {
+namespace {class file_FSI_move005_1281069215m884 : public Loci::pointwise_rule {
 #line 832 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_ic_ ; 
 #line 832 "FSI_move.loci"
@@ -1013,7 +1013,7 @@ namespace {class file_FSI_move005_1280895646m614 : public Loci::pointwise_rule {
 #line 832 "FSI_move.loci"
 public:
 #line 832 "FSI_move.loci"
-    file_FSI_move005_1280895646m614() {
+    file_FSI_move005_1281069215m884() {
 #line 832 "FSI_move.loci"
        name_store("pos_ic",L_pos_ic_) ;
 #line 832 "FSI_move.loci"
@@ -1036,13 +1036,13 @@ public:
 #line 834 "FSI_move.loci"
 } ;
 #line 834 "FSI_move.loci"
-Loci::register_rule<file_FSI_move005_1280895646m614> register_file_FSI_move005_1280895646m614 ;
+Loci::register_rule<file_FSI_move005_1281069215m884> register_file_FSI_move005_1281069215m884 ;
 #line 834 "FSI_move.loci"
 }
 #line 834 "FSI_move.loci"
 
 
-namespace {class file_FSI_move006_1280895646m615 : public Loci::pointwise_rule {
+namespace {class file_FSI_move006_1281069215m885 : public Loci::pointwise_rule {
 #line 836 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_ic_ ; 
 #line 836 "FSI_move.loci"
@@ -1050,7 +1050,7 @@ namespace {class file_FSI_move006_1280895646m615 : public Loci::pointwise_rule {
 #line 836 "FSI_move.loci"
 public:
 #line 836 "FSI_move.loci"
-    file_FSI_move006_1280895646m615() {
+    file_FSI_move006_1281069215m885() {
 #line 836 "FSI_move.loci"
        name_store("pos_ic",L_pos_ic_) ;
 #line 836 "FSI_move.loci"
@@ -1073,13 +1073,13 @@ public:
 #line 838 "FSI_move.loci"
 } ;
 #line 838 "FSI_move.loci"
-Loci::register_rule<file_FSI_move006_1280895646m615> register_file_FSI_move006_1280895646m615 ;
+Loci::register_rule<file_FSI_move006_1281069215m885> register_file_FSI_move006_1281069215m885 ;
 #line 838 "FSI_move.loci"
 }
 #line 838 "FSI_move.loci"
 
 
-namespace {class file_FSI_move007_1280895646m615 : public Loci::pointwise_rule {
+namespace {class file_FSI_move007_1281069215m885 : public Loci::pointwise_rule {
 #line 840 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_n__ ; 
 #line 840 "FSI_move.loci"
@@ -1087,7 +1087,7 @@ namespace {class file_FSI_move007_1280895646m615 : public Loci::pointwise_rule {
 #line 840 "FSI_move.loci"
 public:
 #line 840 "FSI_move.loci"
-    file_FSI_move007_1280895646m615() {
+    file_FSI_move007_1281069215m885() {
 #line 840 "FSI_move.loci"
        name_store("pos{n}",L_pos_n__) ;
 #line 840 "FSI_move.loci"
@@ -1112,7 +1112,7 @@ public:
 #line 842 "FSI_move.loci"
 } ;
 #line 842 "FSI_move.loci"
-Loci::register_rule<file_FSI_move007_1280895646m615> register_file_FSI_move007_1280895646m615 ;
+Loci::register_rule<file_FSI_move007_1281069215m885> register_file_FSI_move007_1281069215m885 ;
 #line 842 "FSI_move.loci"
 }
 #line 842 "FSI_move.loci"
@@ -1133,7 +1133,7 @@ Loci::register_rule<file_FSI_move007_1280895646m615> register_file_FSI_move007_1
 // 	  //cout << "CFDIterationFinished, pos, node_sStar, pos_it" << Loci::MPI_rank << ", "  << ($CFDIterationFinished{n,it-1}) << ", " << $pos{n,it} << ", " << $node_sStar{n,it} << "," << $pos_it{n,it} << endl ;
 // }
 
-namespace {class file_FSI_move008_1280895646m616 : public Loci::pointwise_rule {
+namespace {class file_FSI_move008_1281069215m886 : public Loci::pointwise_rule {
 #line 859 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_ ; 
 #line 859 "FSI_move.loci"
@@ -1143,7 +1143,7 @@ namespace {class file_FSI_move008_1280895646m616 : public Loci::pointwise_rule {
 #line 859 "FSI_move.loci"
 public:
 #line 859 "FSI_move.loci"
-    file_FSI_move008_1280895646m616() {
+    file_FSI_move008_1281069215m886() {
 #line 859 "FSI_move.loci"
        name_store("pos",L_pos_) ;
 #line 859 "FSI_move.loci"
@@ -1170,13 +1170,13 @@ public:
 #line 861 "FSI_move.loci"
 } ;
 #line 861 "FSI_move.loci"
-Loci::register_rule<file_FSI_move008_1280895646m616> register_file_FSI_move008_1280895646m616 ;
+Loci::register_rule<file_FSI_move008_1281069215m886> register_file_FSI_move008_1281069215m886 ;
 #line 861 "FSI_move.loci"
 }
 #line 861 "FSI_move.loci"
 
 
-namespace {class file_FSI_move009_1280895646m617 : public Loci::pointwise_rule {
+namespace {class file_FSI_move009_1281069215m886 : public Loci::pointwise_rule {
 #line 863 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_nit__ ; 
 #line 863 "FSI_move.loci"
@@ -1184,7 +1184,7 @@ namespace {class file_FSI_move009_1280895646m617 : public Loci::pointwise_rule {
 #line 863 "FSI_move.loci"
 public:
 #line 863 "FSI_move.loci"
-    file_FSI_move009_1280895646m617() {
+    file_FSI_move009_1281069215m886() {
 #line 863 "FSI_move.loci"
        name_store("pos{n,it}",L_pos_nit__) ;
 #line 863 "FSI_move.loci"
@@ -1209,13 +1209,13 @@ public:
 #line 865 "FSI_move.loci"
 } ;
 #line 865 "FSI_move.loci"
-Loci::register_rule<file_FSI_move009_1280895646m617> register_file_FSI_move009_1280895646m617 ;
+Loci::register_rule<file_FSI_move009_1281069215m886> register_file_FSI_move009_1281069215m886 ;
 #line 865 "FSI_move.loci"
 }
 #line 865 "FSI_move.loci"
 
 
-namespace {class file_FSI_move010_1280895646m617 : public Loci::pointwise_rule {
+namespace {class file_FSI_move010_1281069215m887 : public Loci::pointwise_rule {
 #line 867 "FSI_move.loci"
     Loci::const_store<vect3d>  L_pos_it_nit__ ; 
 #line 867 "FSI_move.loci"
@@ -1223,7 +1223,7 @@ namespace {class file_FSI_move010_1280895646m617 : public Loci::pointwise_rule {
 #line 867 "FSI_move.loci"
 public:
 #line 867 "FSI_move.loci"
-    file_FSI_move010_1280895646m617() {
+    file_FSI_move010_1281069215m887() {
 #line 867 "FSI_move.loci"
        name_store("pos_it{n,it}",L_pos_it_nit__) ;
 #line 867 "FSI_move.loci"
@@ -1250,13 +1250,13 @@ public:
 #line 869 "FSI_move.loci"
 } ;
 #line 869 "FSI_move.loci"
-Loci::register_rule<file_FSI_move010_1280895646m617> register_file_FSI_move010_1280895646m617 ;
+Loci::register_rule<file_FSI_move010_1281069215m887> register_file_FSI_move010_1281069215m887 ;
 #line 869 "FSI_move.loci"
 }
 #line 869 "FSI_move.loci"
 
 
-namespace {class file_FSI_move011_1280895646m618 : public Loci::pointwise_rule {
+namespace {class file_FSI_move011_1281069215m887 : public Loci::pointwise_rule {
 #line 871 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_s_ic_ ; 
 #line 871 "FSI_move.loci"
@@ -1264,7 +1264,7 @@ namespace {class file_FSI_move011_1280895646m618 : public Loci::pointwise_rule {
 #line 871 "FSI_move.loci"
 public:
 #line 871 "FSI_move.loci"
-    file_FSI_move011_1280895646m618() {
+    file_FSI_move011_1281069215m887() {
 #line 871 "FSI_move.loci"
        name_store("node_s_ic",L_node_s_ic_) ;
 #line 871 "FSI_move.loci"
@@ -1289,7 +1289,7 @@ public:
 #line 873 "FSI_move.loci"
 } ;
 #line 873 "FSI_move.loci"
-Loci::register_rule<file_FSI_move011_1280895646m618> register_file_FSI_move011_1280895646m618 ;
+Loci::register_rule<file_FSI_move011_1281069215m887> register_file_FSI_move011_1281069215m887 ;
 #line 873 "FSI_move.loci"
 }
 #line 873 "FSI_move.loci"
@@ -1300,123 +1300,175 @@ Loci::register_rule<file_FSI_move011_1280895646m618> register_file_FSI_move011_1
 // 	$node_sStar{n,it=0} = $node_s{n} ;
 // }
 
-namespace {class file_FSI_move012_1280895646m619 : public Loci::pointwise_rule {
-#line 881 "FSI_move.loci"
-    Loci::const_store<vect3d>  L_node_sStar_nit__ ; 
-#line 881 "FSI_move.loci"
-    Loci::store<vect3d>  L_node_s_nit_P_1__ ; 
-#line 881 "FSI_move.loci"
+namespace {class file_FSI_move012_1281069215m887 : public Loci::pointwise_rule {
+#line 880 "FSI_move.loci"
+    Loci::const_store<vect3d>  L_node_s_n__ ; 
+#line 880 "FSI_move.loci"
+    Loci::store<vect3d>  L_node_s_nit_EQ_0__ ; 
+#line 880 "FSI_move.loci"
 public:
-#line 881 "FSI_move.loci"
-    file_FSI_move012_1280895646m619() {
-#line 881 "FSI_move.loci"
-       name_store("node_sStar{n,it}",L_node_sStar_nit__) ;
-#line 881 "FSI_move.loci"
-       name_store("node_s{n,it+1}",L_node_s_nit_P_1__) ;
-#line 881 "FSI_move.loci"
-       input("node_sStar{n,it}") ;
-#line 881 "FSI_move.loci"
-       output("node_s{n,it+1}") ;
-#line 881 "FSI_move.loci"
-       constraint("pos{n,it},gridMotionSolutionDependent{n,it}") ;
-#line 881 "FSI_move.loci"
+#line 880 "FSI_move.loci"
+    file_FSI_move012_1281069215m887() {
+#line 880 "FSI_move.loci"
+       name_store("node_s{n}",L_node_s_n__) ;
+#line 880 "FSI_move.loci"
+       name_store("node_s{n,it=0}",L_node_s_nit_EQ_0__) ;
+#line 880 "FSI_move.loci"
+       input("node_s{n}") ;
+#line 880 "FSI_move.loci"
+       output("node_s{n,it=0}") ;
+#line 880 "FSI_move.loci"
+       constraint("pos,gridMotionSolutionDependent") ;
+#line 880 "FSI_move.loci"
     }
-#line 881 "FSI_move.loci"
-    void calculate(Entity _e_) { 
-#line 882 "FSI_move.loci"
+#line 880 "FSI_move.loci"
+    void prelude(const Loci::sequence &seq) { 
+  if (Loci::MPI_rank==0) cout << "node_s{n,it=0}=node_s{n}" << endl ;
+}    void calculate(Entity _e_) { 
+#line 883 "FSI_move.loci"
+	L_node_s_nit_EQ_0__[_e_]= L_node_s_n__[_e_];
+}    void compute(const Loci::sequence &seq) { 
+#line 884 "FSI_move.loci"
+      prelude(seq) ;
+#line 884 "FSI_move.loci"
+      do_loop(seq,this) ;
+#line 884 "FSI_move.loci"
+    }
+#line 884 "FSI_move.loci"
+} ;
+#line 884 "FSI_move.loci"
+Loci::register_rule<file_FSI_move012_1281069215m887> register_file_FSI_move012_1281069215m887 ;
+#line 884 "FSI_move.loci"
+}
+#line 884 "FSI_move.loci"
+
+
+namespace {class file_FSI_move013_1281069215m888 : public Loci::pointwise_rule {
+#line 886 "FSI_move.loci"
+    Loci::const_store<vect3d>  L_node_sStar_nit__ ; 
+#line 886 "FSI_move.loci"
+    Loci::store<vect3d>  L_node_s_nit_P_1__ ; 
+#line 886 "FSI_move.loci"
+public:
+#line 886 "FSI_move.loci"
+    file_FSI_move013_1281069215m888() {
+#line 886 "FSI_move.loci"
+       name_store("node_sStar{n,it}",L_node_sStar_nit__) ;
+#line 886 "FSI_move.loci"
+       name_store("node_s{n,it+1}",L_node_s_nit_P_1__) ;
+#line 886 "FSI_move.loci"
+       input("node_sStar{n,it}") ;
+#line 886 "FSI_move.loci"
+       output("node_s{n,it+1}") ;
+#line 886 "FSI_move.loci"
+       constraint("pos,gridMotionSolutionDependent") ;
+#line 886 "FSI_move.loci"
+    }
+#line 886 "FSI_move.loci"
+    void prelude(const Loci::sequence &seq) { 
+  if (Loci::MPI_rank==0) cout << "node_s{n,it+1}=node_sStar{n,it}" << endl ;
+}    void calculate(Entity _e_) { 
+#line 889 "FSI_move.loci"
 	L_node_s_nit_P_1__[_e_]= L_node_sStar_nit__[_e_];
 }    void compute(const Loci::sequence &seq) { 
-#line 883 "FSI_move.loci"
+#line 890 "FSI_move.loci"
+      prelude(seq) ;
+#line 890 "FSI_move.loci"
       do_loop(seq,this) ;
-#line 883 "FSI_move.loci"
+#line 890 "FSI_move.loci"
     }
-#line 883 "FSI_move.loci"
+#line 890 "FSI_move.loci"
 } ;
-#line 883 "FSI_move.loci"
-Loci::register_rule<file_FSI_move012_1280895646m619> register_file_FSI_move012_1280895646m619 ;
-#line 883 "FSI_move.loci"
+#line 890 "FSI_move.loci"
+Loci::register_rule<file_FSI_move013_1281069215m888> register_file_FSI_move013_1281069215m888 ;
+#line 890 "FSI_move.loci"
 }
-#line 883 "FSI_move.loci"
+#line 890 "FSI_move.loci"
 
 
-namespace {class file_FSI_move013_1280895646m619 : public Loci::pointwise_rule {
-#line 885 "FSI_move.loci"
+namespace {class file_FSI_move014_1281069215m888 : public Loci::pointwise_rule {
+#line 892 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_s_nit__ ; 
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
     Loci::store<vect3d>  L_node_s_n_P_1__ ; 
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
 public:
-#line 885 "FSI_move.loci"
-    file_FSI_move013_1280895646m619() {
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
+    file_FSI_move014_1281069215m888() {
+#line 892 "FSI_move.loci"
        name_store("node_s{n+1}",L_node_s_n_P_1__) ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
        name_store("node_s{n,it}",L_node_s_nit__) ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
        input("node_s{n,it}") ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
        output("node_s{n+1}") ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
        constraint("pos,gridMotionSolutionDependent") ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
        conditional("iterationFinished{n,it-1}") ;
-#line 885 "FSI_move.loci"
+#line 892 "FSI_move.loci"
     }
-#line 885 "FSI_move.loci"
-    void calculate(Entity _e_) { 
-#line 886 "FSI_move.loci"
+#line 892 "FSI_move.loci"
+    void prelude(const Loci::sequence &seq) { 
+	//$node_s{n+1}=$node_s{n,it} ;
+	if (Loci::MPI_rank==0) cout << "node_s{n+1}=node_s{n,it}" << endl ;
+}    void calculate(Entity _e_) { 
+#line 896 "FSI_move.loci"
 	L_node_s_n_P_1__[_e_]=L_node_s_nit__[_e_];
 }    void compute(const Loci::sequence &seq) { 
-#line 887 "FSI_move.loci"
+#line 897 "FSI_move.loci"
+      prelude(seq) ;
+#line 897 "FSI_move.loci"
       do_loop(seq,this) ;
-#line 887 "FSI_move.loci"
+#line 897 "FSI_move.loci"
     }
-#line 887 "FSI_move.loci"
+#line 897 "FSI_move.loci"
 } ;
-#line 887 "FSI_move.loci"
-Loci::register_rule<file_FSI_move013_1280895646m619> register_file_FSI_move013_1280895646m619 ;
-#line 887 "FSI_move.loci"
+#line 897 "FSI_move.loci"
+Loci::register_rule<file_FSI_move014_1281069215m888> register_file_FSI_move014_1281069215m888 ;
+#line 897 "FSI_move.loci"
 }
-#line 887 "FSI_move.loci"
+#line 897 "FSI_move.loci"
 
 
-namespace {class file_FSI_move014_1280895646m620 : public Loci::pointwise_rule {
-#line 889 "FSI_move.loci"
+namespace {class file_FSI_move015_1281069215m889 : public Loci::pointwise_rule {
+#line 899 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_sStar_nit__ ; 
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
     Loci::store<float>  L_sMag_nit__ ; 
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
 public:
-#line 889 "FSI_move.loci"
-    file_FSI_move014_1280895646m620() {
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
+    file_FSI_move015_1281069215m889() {
+#line 899 "FSI_move.loci"
        name_store("node_sStar{n,it}",L_node_sStar_nit__) ;
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
        name_store("sMag{n,it}",L_sMag_nit__) ;
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
        input("node_sStar{n,it}") ;
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
        output("sMag{n,it}") ;
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
        constraint("pos") ;
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
     }
-#line 889 "FSI_move.loci"
+#line 899 "FSI_move.loci"
     void calculate(Entity _e_) { 
-#line 890 "FSI_move.loci"
+#line 900 "FSI_move.loci"
 	L_sMag_nit__[_e_]= norm (L_node_sStar_nit__[_e_]) ;
 }    void compute(const Loci::sequence &seq) { 
-#line 891 "FSI_move.loci"
+#line 901 "FSI_move.loci"
       do_loop(seq,this) ;
-#line 891 "FSI_move.loci"
+#line 901 "FSI_move.loci"
     }
-#line 891 "FSI_move.loci"
+#line 901 "FSI_move.loci"
 } ;
-#line 891 "FSI_move.loci"
-Loci::register_rule<file_FSI_move014_1280895646m620> register_file_FSI_move014_1280895646m620 ;
-#line 891 "FSI_move.loci"
+#line 901 "FSI_move.loci"
+Loci::register_rule<file_FSI_move015_1281069215m889> register_file_FSI_move015_1281069215m889 ;
+#line 901 "FSI_move.loci"
 }
-#line 891 "FSI_move.loci"
+#line 901 "FSI_move.loci"
 
 
 // $rule pointwise(node_sStar{n,it=-1}<-node_s{n}),constraint(pos,gridMotionSolutionDependent) {
@@ -1427,44 +1479,44 @@ Loci::register_rule<file_FSI_move014_1280895646m620> register_file_FSI_move014_1
 // 	$node_sStar{n,it=0}=$node_s{n} ;
 // }
 
-namespace {class file_FSI_move015_1280895646m621 : public Loci::pointwise_rule {
-#line 901 "FSI_move.loci"
+namespace {class file_FSI_move016_1281069215m889 : public Loci::pointwise_rule {
+#line 911 "FSI_move.loci"
     Loci::const_store<vect3d>  L_node_s_nit__ ; 
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
     Loci::const_store<vect3d>  L_sStar_nit__ ; 
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
     Loci::const_param<bool>  L_CFDIterationFinished_nit_M_1__ ; 
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
     Loci::store<vect3d>  L_node_sStar_nit__ ; 
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
 public:
-#line 901 "FSI_move.loci"
-    file_FSI_move015_1280895646m621() {
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
+    file_FSI_move016_1281069215m889() {
+#line 911 "FSI_move.loci"
        name_store("node_sStar{n,it}",L_node_sStar_nit__) ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        name_store("node_s{n,it}",L_node_s_nit__) ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        name_store("sStar{n,it}",L_sStar_nit__) ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        name_store("CFDIterationFinished{n,it-1}",L_CFDIterationFinished_nit_M_1__) ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        input("sStar{n,it},node_s{n,it},CFDIterationFinished{n,it-1}") ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        output("node_sStar{n,it}") ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
        constraint("pos,gridMotionSolutionDependent") ;
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
     }
-#line 901 "FSI_move.loci"
+#line 911 "FSI_move.loci"
     void prelude(const Loci::sequence &seq) { 
 	if (*L_CFDIterationFinished_nit_M_1__==true) {
-	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, node_sStar=sStar" << endl ;
   	} else {
-	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false, node_sStar=node_s" << endl ;
   	}
   }    void calculate(Entity _e_) { 
-#line 908 "FSI_move.loci"
+#line 918 "FSI_move.loci"
 	if (L_CFDIterationFinished_nit_M_1__[_e_]) {
 	  //if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar, compute" << endl ;
 	  L_node_sStar_nit__[_e_]=L_sStar_nit__[_e_]; 
@@ -1474,19 +1526,19 @@ public:
 	  //$node_sStar{n,it}=vect3d(0.0,0.0,0.0); // not needed, but for safety
 	}
 }    void compute(const Loci::sequence &seq) { 
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
       prelude(seq) ;
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
       do_loop(seq,this) ;
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
     }
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
 } ;
-#line 916 "FSI_move.loci"
-Loci::register_rule<file_FSI_move015_1280895646m621> register_file_FSI_move015_1280895646m621 ;
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
+Loci::register_rule<file_FSI_move016_1281069215m889> register_file_FSI_move016_1281069215m889 ;
+#line 926 "FSI_move.loci"
 }
-#line 916 "FSI_move.loci"
+#line 926 "FSI_move.loci"
 
 
 

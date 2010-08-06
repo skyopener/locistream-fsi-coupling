@@ -393,7 +393,7 @@ $rule blackbox(CSDRBFweights{n,it}<-CSDnodes_ic,CSDdisplacementsStar{n,it},ncycl
 			valuey=(*$CSDdisplacementsStar{n,it})(i,1);
 			valuez=(*$CSDdisplacementsStar{n,it})(i,2);
 			FSI_RHS_vector.SetValue(&i, &valuex, &valuey, &valuez) ;
-		//	cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: RHS, i = " << i << ", valuex = " << valuex << ", valuey = " << valuey << ", valuez = " << valuez << ", CSDnodes.x = " << (*$CSDnodes_ic)(i,0) << ", CSDnodes.y = " << (*$CSDnodes_ic)(i,1) << ", CSDnodes.z = " << (*$CSDnodes_ic)(i,2) << endl ;
+			cout << "rank = " << rank << ", " << "Displacement Interpolation CSD -> CFD: RHS, i = " << i << ", valuex = " << valuex << ", valuey = " << valuey << ", valuez = " << valuez << ", CSDnodes.x = " << (*$CSDnodes_ic)(i,0) << ", CSDnodes.y = " << (*$CSDnodes_ic)(i,1) << ", CSDnodes.z = " << (*$CSDnodes_ic)(i,2) << endl ;
 		}
 
 		int tempTimeStepNumber = (*$ncycle{n}) ;
@@ -449,7 +449,7 @@ $rule blackbox(CSDRBFweights{n,it}<-CSDnodes_ic,CSDdisplacementsStar{n,it},ncycl
 				distance += pow((*$CSDnodes_ic)(i,1) - (*$CSDnodes_ic)(j,1), 2.) ;
 				distance += pow((*$CSDnodes_ic)(i,2) - (*$CSDnodes_ic)(j,2), 2.) ;
 				distance = sqrt(distance) ;
-				if ( !( (rbfNumber > 0 && rbfNumber < 9) && (distance/r > 1.)) ) {
+				if ( !( (rbfNumber > 0 && rbfNumber < 9) && (distance/r > 1.) ) ) {
 					valuex = radialBasisFunction(distance, r, a, rbfNumber) ;
 					columnIndex=j; //columnValue=valuex ;
 					FSI_A_matrix.SetRowValues(i,1,&columnIndex,&valuex);
@@ -510,9 +510,9 @@ $type node_s_b_flex store<vect3d> ;
 
 $rule pointwise(node_s_b_flex{n,it}<-pos,CSDnodes_ic,CSDYorigin,ncycle{n},CSD2dSpanCenter,CSDdimension,CSDRBFweights{n,it},FSICSD2CFDRBFr,FSICSD2CFDRBFa,FSICSD2CFDRBFnr,CFDIterationFinished{n,it-1}), 
 			constraint(gridMotionSolutionDependent{n,it},FlexibleBoundaryDisplacement{n,it}),
-			option(disable_threading) {
-
-	if (Loci::MPI_rank==0) cout << "node_s_b_flex{n,it}<-pos, CFDIterationFinished = " << ($CFDIterationFinished{n,it-1}) << endl ; 		  
+			option(disable_threading), prelude {
+	if (Loci::MPI_rank==0) cout << "node_s_b_flex{n,it}<-pos, CFDIterationFinished = " << (*$CFDIterationFinished{n,it-1}) << endl ; 		  
+  } compute {
 	if ($CFDIterationFinished{n,it-1}) {
 
 		//int p = Loci::MPI_processes; 

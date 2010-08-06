@@ -170,6 +170,7 @@ namespace streamUns {
       const_param<ScalarResidual> omegaResidualData ;
       const_param<vector<real> > totalSpeciesResidual ;
       const_param<int> CFDMaxTotalInnerIterations ; //add
+      const_param<int> CSDstartingTimeStep ;
       param<bool> CFDIterationFinished ;
     public:
 
@@ -188,6 +189,8 @@ namespace streamUns {
         name_store("totalSpeciesResidual{n,it}",totalSpeciesResidual) ;
         name_store("CFDIterationFinished{n,it}",CFDIterationFinished) ;
         name_store("CFDMaxTotalInnerIterations", CFDMaxTotalInnerIterations) ;
+	name_store("CSDstartingTimeStep", CSDstartingTimeStep) ;
+	input("CSDstartingTimeStep") ;
         input("numSpecies{n,it},ncycle{n},$it{n,it}") ;
         input("maxIterationsPerFSI{n,it},convergenceTolerance{n,it}") ;
         input("vResidualData{n,it},pPrimeResidualData{n,it}") ;
@@ -215,7 +218,9 @@ namespace streamUns {
 //	if (Loci::MPI_rank==0) cout << "CFDIterationFinished..2 " << endl ;
 	*CFDIterationFinished = (*CFDIterationFinished || *it==*CFDMaxTotalInnerIterations) ;
 //	if (Loci::MPI_rank==0) cout << "CFDIterationFinished..3 " << endl ;
-          
+        *CFDIterationFinished = (*CFDIterationFinished && *nCycle >= *CSDstartingTimeStep) ;
+        
+        
 	if (*CFDIterationFinished) {
 	      if (Loci::MPI_rank==0) cout << "CFDIterationFinished.. " << endl ;
 	      } else {

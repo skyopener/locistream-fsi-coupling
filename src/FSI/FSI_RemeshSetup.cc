@@ -55,6 +55,7 @@ namespace streamUns {
   class AssembleRHSRBFSolutionDependentUnit : public unit_rule {
     private:
       const_store<vect3d> pos ;
+      const_param<bool> CFDIterationFinished ;
       store<vect3d> B ;
     public:
                                                                                 
@@ -63,6 +64,8 @@ namespace streamUns {
         name_store("sStar_B{n,it}",B) ;
 //	name_store("pos",pos) ;
 //	input("pos") ;
+	name_store("CFDIterationFinished{n,it-1}",CFDIterationFinished) ;
+        input("CFDIterationFinished{n,it-1}") ;
         output("sStar_B{n,it}") ;
         constraint("boundaryDisplacement{n,it}");
         constraint("gridMotionSolutionDependent{n,it}") ; 
@@ -75,7 +78,16 @@ namespace streamUns {
       }
                                                                                 
       // Loop over nodes.
-      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+      virtual void compute(const sequence &seq) { 
+	if (*CFDIterationFinished) {
+	  if (Loci::MPI_rank==0) { 
+	    cout << "sStar_B{n,it} initialization executing: CFDIterationFinished==" << *CFDIterationFinished << endl ;
+	    do_loop(seq,this) ; 
+	  } 
+	}else {
+	    cout << "sStar_B{n,it} initialization skipped: CFDIterationFinished==" << *CFDIterationFinished << endl ;	 
+	}
+      }
   } ;
                                                                                 
   register_rule<AssembleRHSRBFSolutionDependentUnit> registerAssembleRHSRBFSolutionDependentUnit ;
@@ -84,6 +96,7 @@ namespace streamUns {
     private:
       const_store<vect3d> node_s_b_bc ;
       const_store<vect3d> pos ;
+      const_param<bool> CFDIterationFinished ;
  //     const_store<vect3d> node_s_bflex ;
  //     const_store<bool> FlexibleBoundaryDisplacement ;
       store<vect3d> B ;
@@ -98,6 +111,8 @@ namespace streamUns {
   //      name_store("FlexibleBoundaryDisplacement", FlexibleBoundaryDisplacement); 
   //      input("node_s_bflex") ;
   //      input("FlexibleBoundaryDisplacement");   
+  	name_store("CFDIterationFinished{n,it-1}",CFDIterationFinished) ;
+        input("CFDIterationFinished{n,it-1}") ;
 	input("pos") ;
         input("node_s_b_bc{n}") ;
         output("sStar_B{n,it}") ;
@@ -112,22 +127,32 @@ namespace streamUns {
       void calculate(Entity node) {
   //    	if (FlexibleBoundaryDisplacement[node]) {
 		  		B[node] = node_s_b_bc[node] ;
-//	cout << "Remeshing: r,x,y,z=" << Loci::MPI_rank << ", node_s_b = " << node_s_b_bc[node].x << ", " << node_s_b_bc[node].y << ", " << node_s_b_bc[node].z << ", " << endl ;
+//	cout << "Remeshing: r,x,y,z=" << Loci::MPI_rank << ", " << pos[node].x << ", " << pos[node].y << ", " << pos[node].z << ", B[node]<-node_s_b_bc{n} = " << B[node] << ", " << endl ;
 	//	  	} else {
 	//	  		B[node] = vect3d(0.0,0.0,0.0) ;
 	//	  	}
       }
                                                                                 
       // Loop over nodes.
-      virtual void compute(const sequence &seq) { do_loop(seq,this) ; }
+      virtual void compute(const sequence &seq) { 
+	if (*CFDIterationFinished) {
+	  if (Loci::MPI_rank==0) { 
+	    cout << "node_s_b_bc{n} executing: CFDIterationFinished==" << *CFDIterationFinished << endl ;	    
+	  }
+	  do_loop(seq,this) ; 
+	}else {
+	    cout << "node_s_b_bc{n} skipped: CFDIterationFinished==" << *CFDIterationFinished << endl ;	 
+	}
+      }
   } ;
                                                                                 
   register_rule<AssembleRHSRBFSolutionDependent> registerAssembleRHSRBFSolutionDependent ;
 
  class AssembleRHSRBFSolutionDependentApply : public apply_rule<store<vect3d>,Loci::NullOp<vect3d> > {
     private:
-      const_store<vect3d> node_s_b ;
+      const_store<vect3d> node_s_b_flex ;
       const_store<vect3d> pos ;
+      const_param<bool> CFDIterationFinished ;
  //     const_store<vect3d> node_s_bflex ;
  //     const_store<bool> FlexibleBoundaryDisplacement ;
       store<vect3d> B ;
@@ -137,7 +162,9 @@ namespace streamUns {
       AssembleRHSRBFSolutionDependentApply() {
         name_store("sStar_B{n,it}",B) ;
         name_store("pos",pos) ; // displacement wrt pos_ic
-        name_store("node_s_b_flex{n,it}", node_s_b) ;    
+        name_store("node_s_b_flex{n,it}", node_s_b_flex) ;    
+  	name_store("CFDIterationFinished{n,it-1}",CFDIterationFinished) ;
+        input("CFDIterationFinished{n,it-1}") ;
         input("node_s_b_flex{n,it}") ;
         input("pos") ;
         output("sStar_B{n,it}") ;
@@ -154,17 +181,28 @@ namespace streamUns {
 	//	  	} else {
 		  		//B[node] += node_s_b[node] ;
 		  		//join(B[node], node_s_b[node]) ;
-		  		B[node] = node_s_b[node] ;
-//		  		if (Loci::MPI_rank==0) cout << "Displacement Interpolation CSD -> CFD: x,y,z=" << pos[node].x << ", " << pos[node].y << ", " << pos[node].z << ", node_s_b = " << node_s_b[node].x << ", " << node_s_b[node].y << ", " << node_s_b[node].z << ", " << endl ;
-	//	  		cout << "Remeshing: r,x,y,z=" << Loci::MPI_rank << ", " << pos[node].x << ", " << pos[node].y << ", " << pos[node].z << ", node_s_b_flex = " << node_s_b[node].x << ", " << node_s_b[node].y << ", " << node_s_b[node].z << ", " << endl ;
+	B[node] = node_s_b_flex[node] ;
+// 	const double Tolerance = 1.0e-9 ;
+// 	B[node].x = ((fabs(node_s_b_flex[node].x) > Tolerance)? node_s_b_flex[node].x : 0.0) ;
+// 	B[node].y = ((fabs(node_s_b_flex[node].y) > Tolerance)? node_s_b_flex[node].y : 0.0) ;
+// 	B[node].z = ((fabs(node_s_b_flex[node].z) > Tolerance)? node_s_b_flex[node].z : 0.0) ;
+	cout << "Displacement Interpolation CSD -> CFD: r, x,y,z=" << Loci::MPI_rank << ", " << pos[node] << ", node_s_b_flex = " << node_s_b_flex[node] << endl ;
+//	cout << "Remeshing: r,x,y,z" << Loci::MPI_rank << ", " << pos[node].x << ", " << pos[node].y << ", " << pos[node].z << ", B[node]<-node_s_b_flex{n,it} = " << B[node] << endl ;
 	//	  	}
       }
                                                                                 
       // Loop over nodes.
+      // Loop over nodes.
       virtual void compute(const sequence &seq) { 
-	do_loop(seq,this) ; 
-	if (Loci::MPI_rank==0) cout << "[I] Remeshing: collecting the RHS" << endl ;
-	} //cout << "Inside AssembleRHSRBFSolutionDependentApply, r=" << (Loci::MPI_rank) << endl ;}
+	if (*CFDIterationFinished) {
+	  if (Loci::MPI_rank==0) cout << "node_s_b_flex{n,it} executing: CFDIterationFinished==" << *CFDIterationFinished << endl ;
+	  do_loop(seq,this) ; 
+	  if (Loci::MPI_rank==0) cout << "[I] Remeshing: collecting the RHS" << endl ;	   
+	} else {
+	    cout << "node_s_b_flex{n,it} skipped: CFDIterationFinished==" << *CFDIterationFinished << endl ;	  
+	}
+      }
+
   } ;
                                                                                 
   register_rule<AssembleRHSRBFSolutionDependentApply> registerAssembleRHSRBFSolutionDependentApply ;
@@ -330,7 +368,7 @@ namespace streamUns {
       // Define input and output.
       RBFBoundaryNodeAssembleQApply() {
         name_store("rbfNumBoundaryNode",rbfNumBoundaryNode) ;
-				name_store("pos",pos) ;
+	name_store("pos",pos) ;
         name_store("rbfBoundaryNodeQ", rbfQ) ;
         input("rbfNumBoundaryNode") ;
         input("pos") ;

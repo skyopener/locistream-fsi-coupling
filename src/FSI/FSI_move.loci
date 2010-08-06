@@ -877,12 +877,22 @@ $rule pointwise(node_s{n=0}<-node_s_ic),constraint(pos,gridMotionSolutionDepende
 // 	$node_sStar{n,it=0} = $node_s{n} ;
 // }
 
-$rule pointwise(node_s{n,it+1}<-node_sStar{n,it}),constraint(pos{n,it},gridMotionSolutionDependent{n,it})
-{
+$rule pointwise(node_s{n,it=0}<-node_s{n}),constraint(pos,gridMotionSolutionDependent), prelude {
+  if (Loci::MPI_rank==0) cout << "node_s{n,it=0}=node_s{n}" << endl ;
+} compute {
+	$node_s{n,it=0} = $node_s{n} ;
+}
+
+$rule pointwise(node_s{n,it+1}<-node_sStar{n,it}),constraint(pos,gridMotionSolutionDependent), prelude {
+  if (Loci::MPI_rank==0) cout << "node_s{n,it+1}=node_sStar{n,it}" << endl ;
+} compute {
 	$node_s{n,it+1} = $node_sStar{n,it} ;
 }
 
-$rule pointwise(node_s{n+1}<-node_s{n,it}),conditional(iterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent) {
+$rule pointwise(node_s{n+1}<-node_s{n,it}),conditional(iterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent), prelude {
+	//$node_s{n+1}=$node_s{n,it} ;
+	if (Loci::MPI_rank==0) cout << "node_s{n+1}=node_s{n,it}" << endl ;
+} compute {
 	$node_s{n+1}=$node_s{n,it} ;
 }
 
@@ -900,9 +910,9 @@ $rule pointwise(sMag{n,it}<-node_sStar{n,it}),constraint(pos) {
 
 $rule pointwise(node_sStar{n,it}<-sStar{n,it},node_s{n,it},CFDIterationFinished{n,it-1}),constraint(pos,gridMotionSolutionDependent), prelude  {
 	if (*$CFDIterationFinished{n,it-1}==true) {
-	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, updating node_sStar" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == true, node_sStar=sStar" << endl ;
   	} else {
-	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false" << endl ;
+	  if (Loci::MPI_rank==0) cout << "CFDIterationFinished == false, node_sStar=node_s" << endl ;
   	}
   } compute {
 	if ($CFDIterationFinished{n,it-1}) {
